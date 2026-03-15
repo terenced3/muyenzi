@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node /Users/terencedube/muyenzi/node_modules/next/dist/bin/next build)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
