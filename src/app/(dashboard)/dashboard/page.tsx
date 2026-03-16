@@ -47,7 +47,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col">
-      <Topbar title="Overview" />
+      <Topbar title="Overview" description="Welcome back — here's what's happening today" />
       <div className="p-6 space-y-6">
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -56,33 +56,40 @@ export default async function DashboardPage() {
             value={typedStats?.visitors_today ?? 0}
             icon={Users}
             description="Check-ins today"
+            accent="violet"
           />
           <StatsCard
             title="Currently Inside"
             value={typedStats?.currently_inside ?? 0}
             icon={UserCheck}
             description="Active check-ins"
+            accent="emerald"
           />
           <StatsCard
             title="Upcoming Visits"
             value={typedStats?.upcoming_visits ?? 0}
             icon={CalendarClock}
             description="Pre-registered visitors"
+            accent="amber"
           />
           <StatsCard
             title="This Week"
             value={typedStats?.visits_this_week ?? 0}
             icon={TrendingUp}
             description="Total visits this week"
+            accent="sky"
           />
         </div>
 
         {/* Recent visits */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base">Recent Visits</CardTitle>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/dashboard/visitors">View all</Link>
+        <Card className="overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
+            <div>
+              <CardTitle className="text-base font-semibold">Recent Visits</CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">Latest 10 visitor check-ins</p>
+            </div>
+            <Button variant="outline" size="sm" asChild className="text-xs">
+              <Link href="/dashboard/visitors">View all →</Link>
             </Button>
           </CardHeader>
           <CardContent>

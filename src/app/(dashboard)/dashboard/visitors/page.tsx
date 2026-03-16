@@ -64,24 +64,24 @@ export default async function VisitorsPage({
 
   return (
     <div className="flex flex-col">
-      <Topbar title="Visitors" />
+      <Topbar title="Visitors" description="Manage and track all visitor activity" />
       <div className="p-6 space-y-4">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3">
-          <form className="flex items-center gap-2 flex-1 min-w-[200px] max-w-sm">
+          <form className="flex items-center gap-2 flex-1 min-w-[200px] max-w-xl">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 name="q"
                 defaultValue={query}
                 placeholder="Search visitors…"
-                className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
               />
             </div>
             <select
               name="site"
               defaultValue={siteFilter}
-              className="text-sm border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"
+              className="text-sm border border-border rounded-lg px-3 py-2 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
             >
               <option value="">All sites</option>
               {sites?.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -89,7 +89,7 @@ export default async function VisitorsPage({
             <select
               name="status"
               defaultValue={statusFilter}
-              className="text-sm border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"
+              className="text-sm border border-border rounded-lg px-3 py-2 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
             >
               <option value="">All statuses</option>
               {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -98,7 +98,7 @@ export default async function VisitorsPage({
           </form>
           <div className="flex items-center gap-2 ml-auto">
             <ExportMenu companyId={profile.company_id} />
-            <Button asChild>
+            <Button asChild className="bg-primary hover:bg-primary/90">
               <Link href="/dashboard/invitations/new">
                 <Plus className="h-4 w-4 mr-2" /> Invite Visitor
               </Link>
@@ -109,52 +109,56 @@ export default async function VisitorsPage({
         {/* Table */}
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <Users className="h-12 w-12 text-slate-300 mb-4" />
-            <h3 className="font-semibold text-slate-900 mb-1">No visitors found</h3>
-            <p className="text-sm text-slate-500 mb-4">Invite your first visitor to get started.</p>
-            <Button asChild><Link href="/dashboard/invitations/new"><Plus className="h-4 w-4 mr-2" />Invite Visitor</Link></Button>
+            <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Users className="h-7 w-7 text-muted-foreground/50" />
+            </div>
+            <h3 className="font-semibold text-foreground mb-1">No visitors found</h3>
+            <p className="text-sm text-muted-foreground mb-5">Invite your first visitor to get started.</p>
+            <Button asChild className="bg-primary hover:bg-primary/90">
+              <Link href="/dashboard/invitations/new"><Plus className="h-4 w-4 mr-2" />Invite Visitor</Link>
+            </Button>
           </div>
         ) : (
-          <Card>
+          <Card className="overflow-hidden">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b bg-slate-50">
-                      <th className="text-left px-4 py-3 font-medium text-slate-600">Visitor</th>
-                      <th className="text-left px-4 py-3 font-medium text-slate-600">Host</th>
-                      <th className="text-left px-4 py-3 font-medium text-slate-600">Site</th>
-                      <th className="text-left px-4 py-3 font-medium text-slate-600">Check In</th>
-                      <th className="text-left px-4 py-3 font-medium text-slate-600">Duration</th>
-                      <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
-                      <th className="text-left px-4 py-3 font-medium text-slate-600">Code</th>
+                    <tr className="border-b border-border bg-muted/40">
+                      <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Visitor</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Host</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Site</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Check In</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Duration</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Code</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
+                  <tbody className="divide-y divide-border/60">
                     {filtered.map(visit => (
-                      <tr key={visit.id} className="hover:bg-slate-50 transition-colors">
+                      <tr key={visit.id} className="hover:bg-muted/30 transition-colors group">
                         <td className="px-4 py-3">
-                          <p className="font-medium text-slate-900">{visit.visitor.full_name}</p>
-                          {visit.visitor.company_name && <p className="text-xs text-slate-500">{visit.visitor.company_name}</p>}
-                          {visit.visitor.email && <p className="text-xs text-slate-400">{visit.visitor.email}</p>}
+                          <p className="font-medium text-foreground group-hover:text-primary transition-colors">{visit.visitor.full_name}</p>
+                          {visit.visitor.company_name && <p className="text-xs text-muted-foreground mt-0.5">{visit.visitor.company_name}</p>}
+                          {visit.visitor.email && <p className="text-xs text-muted-foreground/60">{visit.visitor.email}</p>}
                         </td>
-                        <td className="px-4 py-3 text-slate-600">{visit.host?.full_name ?? '—'}</td>
-                        <td className="px-4 py-3 text-slate-600">{visit.site.name}</td>
-                        <td className="px-4 py-3 text-slate-500 text-xs">
+                        <td className="px-4 py-3 text-muted-foreground">{visit.host?.full_name ?? '—'}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{visit.site.name}</td>
+                        <td className="px-4 py-3 text-muted-foreground/70 text-xs whitespace-nowrap">
                           {visit.check_in_at ? formatDateTime(visit.check_in_at) : '—'}
                         </td>
-                        <td className="px-4 py-3 text-slate-500 text-xs">
+                        <td className="px-4 py-3 text-muted-foreground/70 text-xs">
                           {visit.check_in_at && visit.check_out_at
                             ? formatDuration(visit.check_in_at, visit.check_out_at)
                             : '—'}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${STATUS_CLASSES[visit.status]}`}>
+                          <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_CLASSES[visit.status]}`}>
                             {STATUS_LABELS[visit.status]}
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <code className="text-xs bg-slate-100 rounded px-1.5 py-0.5 font-mono">{visit.access_code}</code>
+                          <code className="text-xs bg-muted rounded-md px-2 py-1 font-mono text-foreground/80">{visit.access_code}</code>
                         </td>
                       </tr>
                     ))}
