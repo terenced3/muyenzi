@@ -1,156 +1,86 @@
+@config "./tailwind.config.js";
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
+/* ============================================================
+   HEROUI — Modern Indigo Preset
+   Font & spacing vars (non-color, not managed by HeroUI plugin)
+   ============================================================ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ============================================
-   DEEP VIOLET THEME
-   Primary: Indigo-Violet spectrum
-   Sidebar: Deep midnight indigo
-   Accents: Vibrant violet-blue
-   ============================================ */
-
+/* ============================================================
+   Bridge vars for remaining shadcn UI components (Calendar,
+   Dialog, Popover, etc.) that still reference --primary etc.
+   These mirror the HeroUI theme values so both systems align.
+   ============================================================ */
 :root {
-  /* Canvas */
-  --background: oklch(0.979 0.006 264);
-  --foreground: oklch(0.18 0.025 264);
+  --radius: 0.75rem;
 
-  /* Cards & Popovers */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.025 264);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.025 264);
+  /* Map to HeroUI light theme values */
+  --background: #f4f5f9;
+  --foreground: #11181C;
+  --card: #ffffff;
+  --card-foreground: #11181C;
+  --popover: #ffffff;
+  --popover-foreground: #11181C;
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f5f9;
+  --secondary-foreground: #11181C;
+  --muted: #eaecf3;
+  --muted-foreground: #71717a;
+  --accent: #eef2ff;
+  --accent-foreground: #4338ca;
+  --destructive: #ef4444;
+  --border: #dde0eb;
+  --input: #dde0eb;
+  --ring: #6366f1;
 
-  /* Primary — vibrant indigo */
-  --primary: oklch(0.558 0.243 277.5);
-  --primary-foreground: oklch(0.98 0.008 264);
-
-  /* Secondary — soft violet tint */
-  --secondary: oklch(0.948 0.022 274);
-  --secondary-foreground: oklch(0.38 0.12 274);
-
-  /* Muted */
-  --muted: oklch(0.96 0.01 264);
-  --muted-foreground: oklch(0.52 0.03 264);
-
-  /* Accent — light violet */
-  --accent: oklch(0.948 0.022 274);
-  --accent-foreground: oklch(0.38 0.12 274);
-
-  /* Destructive — red */
-  --destructive: oklch(0.577 0.245 27.325);
-
-  /* Borders & Inputs */
-  --border: oklch(0.905 0.018 264);
-  --input: oklch(0.905 0.018 264);
-  --ring: oklch(0.558 0.243 277.5);
-
-  /* Charts — indigo/violet spectrum */
-  --chart-1: oklch(0.558 0.243 277.5);
-  --chart-2: oklch(0.48 0.21 277);
-  --chart-3: oklch(0.63 0.19 262);
-  --chart-4: oklch(0.72 0.14 260);
-  --chart-5: oklch(0.82 0.09 258);
-
-  --radius: 0.625rem;
-
-  /* Sidebar — deep midnight indigo */
-  --sidebar: oklch(0.213 0.101 278);
-  --sidebar-foreground: oklch(0.88 0.028 274);
-  --sidebar-primary: oklch(0.558 0.243 277.5);
-  --sidebar-primary-foreground: oklch(0.98 0.008 264);
-  --sidebar-accent: oklch(0.28 0.075 278);
-  --sidebar-accent-foreground: oklch(0.96 0.02 274);
-  --sidebar-border: oklch(0.31 0.07 278);
-  --sidebar-ring: oklch(0.558 0.243 277.5);
+  /* Sidebar (dark indigo — used directly, not via HeroUI token) */
+  --sidebar: #13131f;
+  --sidebar-foreground: #e8eaff;
+  --sidebar-muted: rgba(232,234,255,0.45);
+  --sidebar-accent: #1a1a2e;
+  --sidebar-accent-foreground: #e8eaff;
+  --sidebar-border: rgba(255,255,255,0.07);
+  --sidebar-primary: #818cf8;
 }
 
 .dark {
-  --background: oklch(0.145 0.018 264);
-  --foreground: oklch(0.95 0.012 264);
-  --card: oklch(0.19 0.022 264);
-  --card-foreground: oklch(0.95 0.012 264);
-  --popover: oklch(0.19 0.022 264);
-  --popover-foreground: oklch(0.95 0.012 264);
-  --primary: oklch(0.62 0.22 277);
-  --primary-foreground: oklch(0.15 0.05 264);
-  --secondary: oklch(0.26 0.06 278);
-  --secondary-foreground: oklch(0.88 0.025 274);
-  --muted: oklch(0.26 0.04 264);
-  --muted-foreground: oklch(0.65 0.025 264);
-  --accent: oklch(0.26 0.06 278);
-  --accent-foreground: oklch(0.88 0.025 274);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.62 0.22 277);
-  --chart-1: oklch(0.62 0.22 277);
-  --chart-2: oklch(0.53 0.19 277);
-  --chart-3: oklch(0.68 0.17 262);
-  --chart-4: oklch(0.76 0.13 260);
-  --chart-5: oklch(0.84 0.09 258);
-  --sidebar: oklch(0.165 0.075 278);
-  --sidebar-foreground: oklch(0.88 0.028 274);
-  --sidebar-primary: oklch(0.62 0.22 277);
-  --sidebar-primary-foreground: oklch(0.98 0.008 264);
-  --sidebar-accent: oklch(0.24 0.065 278);
-  --sidebar-accent-foreground: oklch(0.96 0.02 274);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.62 0.22 277);
+  --background: #0d0d1c;
+  --foreground: #e8eaff;
+  --card: #13131f;
+  --card-foreground: #e8eaff;
+  --popover: #13131f;
+  --popover-foreground: #e8eaff;
+  --primary: #818cf8;
+  --primary-foreground: #0d0d1c;
+  --secondary: #1a1a2e;
+  --secondary-foreground: #e8eaff;
+  --muted: #1a1a2e;
+  --muted-foreground: #a1a1aa;
+  --accent: #21213a;
+  --accent-foreground: #c7d2fe;
+  --destructive: #f87171;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #818cf8;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--border);
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--background);
+    color: var(--foreground);
   }
   html {
-    @apply font-sans;
+    font-family: var(--font-sans, sans-serif);
   }
 }

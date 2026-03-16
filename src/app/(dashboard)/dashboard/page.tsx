@@ -3,11 +3,10 @@ import { redirect } from 'next/navigation'
 import { Users, UserCheck, CalendarClock, TrendingUp } from 'lucide-react'
 import StatsCard from '@/components/dashboard/StatsCard'
 import RecentVisitsTable from '@/components/dashboard/RecentVisitsTable'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Topbar from '@/components/layout/Topbar'
 import type { VisitWithRelations } from '@/types/database'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { Button, Card, CardBody, CardHeader } from '@heroui/react'
 
 export const metadata = { title: 'Dashboard – Muyenzi' }
 
@@ -26,11 +25,9 @@ export default async function DashboardPage() {
 
   const companyId = profile.company_id
 
-  // Fetch stats
   const { data: stats } = await supabase
     .rpc('get_company_stats', { p_company_id: companyId })
 
-  // Fetch recent visits
   const { data: recentVisits } = await supabase
     .from('visits')
     .select('*, visitor:visitors(*), site:sites(*), host:users(*)')
@@ -46,55 +43,66 @@ export default async function DashboardPage() {
   } | null
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col h-full">
       <Topbar title="Overview" description="Welcome back — here's what's happening today" />
-      <div className="p-6 space-y-6">
-        {/* Stats */}
+
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Stats grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <StatsCard
             title="Visitors Today"
             value={typedStats?.visitors_today ?? 0}
             icon={Users}
-            description="Check-ins today"
-            accent="violet"
+            description="Total check-ins today"
+            accent="primary"
           />
           <StatsCard
             title="Currently Inside"
             value={typedStats?.currently_inside ?? 0}
             icon={UserCheck}
-            description="Active check-ins"
-            accent="emerald"
+            description="Active on premises"
+            accent="success"
           />
           <StatsCard
             title="Upcoming Visits"
             value={typedStats?.upcoming_visits ?? 0}
             icon={CalendarClock}
             description="Pre-registered visitors"
-            accent="amber"
+            accent="warning"
           />
           <StatsCard
             title="This Week"
             value={typedStats?.visits_this_week ?? 0}
             icon={TrendingUp}
             description="Total visits this week"
-            accent="sky"
+            accent="secondary"
           />
         </div>
 
         {/* Recent visits */}
-        <Card className="overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
+        <Card shadow="md" radius="lg" className="bg-content1">
+          <CardHeader className="flex flex-row items-center justify-between px-6 py-4"
+            style={{ borderBottom: '1px solid var(--border)' }}
+          >
             <div>
-              <CardTitle className="text-base font-semibold">Recent Visits</CardTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">Latest 10 visitor check-ins</p>
+              <h3 className="font-bold text-foreground text-base">Recent Visits</h3>
+              <p className="text-xs text-default-400 mt-0.5">Latest 10 visitor check-ins</p>
             </div>
-            <Button variant="outline" size="sm" asChild className="text-xs">
-              <Link href="/dashboard/visitors">View all →</Link>
+            <Button
+              as={Link}
+              href="/dashboard/visitors"
+              variant="flat"
+              color="primary"
+              size="sm"
+              radius="lg"
+              className="font-semibold"
+            >
+              View all →
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardBody className="px-6 py-4">
             <RecentVisitsTable visits={(recentVisits ?? []) as VisitWithRelations[]} />
-          </CardContent>
+          </CardBody>
         </Card>
       </div>
     </div>

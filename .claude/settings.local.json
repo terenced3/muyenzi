@@ -3,7 +3,9 @@
     "allow": [
       "Bash(node /Users/terencedube/muyenzi/node_modules/next/dist/bin/next build)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm info:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

@@ -1,16 +1,14 @@
 'use client'
 
-import { Bell, Menu } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Bell } from 'lucide-react'
 import {
+  Button,
+  Dropdown,
+  DropdownTrigger,
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+  DropdownItem,
+  Badge,
+} from '@heroui/react'
 import { useNotifications } from '@/hooks/useNotifications'
 import { formatRelative } from '@/lib/utils/format'
 
@@ -20,83 +18,105 @@ interface TopbarProps {
   description?: string
 }
 
-export default function Topbar({ onMenuClick, title, description }: TopbarProps) {
+export default function Topbar({ title, description }: TopbarProps) {
   const { notifications, unreadCount, markAllRead } = useNotifications()
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6 shrink-0">
-      <div className="flex items-center gap-4">
-        <button
-          onClick={onMenuClick}
-          className="lg:hidden text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-        <div>
-          {title && (
-            <h1 className="font-semibold text-foreground text-base leading-tight">{title}</h1>
-          )}
-          {description && (
-            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-          )}
-        </div>
+    <header className="flex h-16 items-center justify-between px-6 bg-content1 shrink-0"
+      style={{ borderBottom: '1px solid var(--border)' }}
+    >
+      {/* Left: title + description */}
+      <div>
+        {title && (
+          <h1 className="font-bold text-foreground text-lg leading-tight">{title}</h1>
+        )}
+        {description && (
+          <p className="text-xs text-default-400 mt-0.5">{description}</p>
+        )}
       </div>
 
-      <div className="flex items-center gap-1.5">
-        <DropdownMenu>
-          <DropdownMenuTrigger render={
+      {/* Right: actions */}
+      <div className="flex items-center gap-2">
+        <Dropdown placement="bottom-end">
+          <DropdownTrigger>
             <Button
-              variant="ghost"
-              size="icon"
-              className="relative h-9 w-9 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
-            />
-          }>
-            <Bell className="h-4.5 w-4.5" />
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary ring-2 ring-card" />
-            )}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
-            <DropdownMenuLabel className="flex items-center justify-between py-3">
-              <span className="font-semibold">Notifications</span>
-              {unreadCount > 0 && (
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary border-0">
-                    {unreadCount} new
-                  </Badge>
-                  <button
-                    onClick={markAllRead}
-                    className="text-xs text-muted-foreground hover:text-foreground font-normal transition-colors"
-                  >
-                    Mark all read
-                  </button>
-                </div>
+              isIconOnly
+              variant="light"
+              radius="full"
+              size="sm"
+              className="relative text-default-500"
+              aria-label="Notifications"
+            >
+              {unreadCount > 0 ? (
+                <Badge content={unreadCount > 9 ? '9+' : unreadCount} color="danger" size="sm" shape="circle">
+                  <Bell className="h-4.5 w-4.5" />
+                </Badge>
+              ) : (
+                <Bell className="h-4.5 w-4.5" />
               )}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {notifications.length === 0 ? (
-              <div className="py-8 text-center">
-                <Bell className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No notifications</p>
+            </Button>
+          </DropdownTrigger>
+          <DropdownMenu
+            aria-label="Notifications"
+            className="w-80 p-0"
+            itemClasses={{ base: 'rounded-none data-[hover=true]:bg-default-50' }}
+          >
+            {/* Header */}
+            <DropdownItem
+              key="header"
+              isReadOnly
+              className="cursor-default px-4 py-3 border-b border-divider"
+              textValue="notifications-header"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-foreground text-sm">Notifications</span>
+                {unreadCount > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                      {unreadCount} new
+                    </span>
+                    <button
+                      onClick={markAllRead}
+                      className="text-xs text-default-400 hover:text-primary transition-colors"
+                    >
+                      Mark all read
+                    </button>
+                  </div>
+                )}
               </div>
+            </DropdownItem>
+
+            {/* Notification items */}
+            {notifications.length === 0 ? (
+              <DropdownItem key="empty" isReadOnly className="py-8 text-center cursor-default" textValue="empty">
+                <div className="flex flex-col items-center gap-2">
+                  <Bell className="h-8 w-8 text-default-200" />
+                  <p className="text-sm text-default-400">No notifications yet</p>
+                </div>
+              </DropdownItem>
             ) : (
               notifications.slice(0, 8).map(n => (
-                <DropdownMenuItem
+                <DropdownItem
                   key={n.id}
-                  className={`flex flex-col items-start gap-1 py-3 px-4 cursor-default ${!n.read ? 'bg-primary/5' : ''}`}
+                  className={`px-4 py-3 ${!n.read ? 'bg-primary/5' : ''}`}
+                  textValue={n.message}
                 >
-                  <div className="flex items-start gap-2 w-full">
-                    {!n.read && <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />}
-                    <p className={`text-sm flex-1 ${!n.read ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-                      {n.message}
-                    </p>
+                  <div className="flex items-start gap-2">
+                    {!n.read && (
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                    )}
+                    <div className={!n.read ? '' : 'pl-3.5'}>
+                      <p className={`text-sm ${!n.read ? 'font-semibold text-foreground' : 'text-default-600'}`}>
+                        {n.message}
+                      </p>
+                      <p className="text-xs text-default-300 mt-0.5">{formatRelative(n.created_at)}</p>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground/60 pl-3.5">{formatRelative(n.created_at)}</p>
-                </DropdownMenuItem>
+                </DropdownItem>
               ))
             )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </DropdownMenu>
+        </Dropdown>
       </div>
     </header>
   )

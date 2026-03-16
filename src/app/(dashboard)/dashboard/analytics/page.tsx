@@ -1,11 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { Card, CardBody, CardHeader } from '@heroui/react'
 import Topbar from '@/components/layout/Topbar'
 import VisitTrendsChart from '@/components/analytics/VisitTrendsChart'
 import HourlyChart from '@/components/analytics/HourlyChart'
 import SiteBreakdown from '@/components/analytics/SiteBreakdown'
 import ExportMenu from '@/components/shared/ExportMenu'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export const metadata = { title: 'Analytics – Muyenzi' }
 
@@ -29,7 +29,6 @@ export default async function AnalyticsPage() {
       .neq('status', 'cancelled'),
   ])
 
-  // Aggregate per-site
   const siteMap = new Map<string, { name: string; count: number }>()
   for (const v of sites ?? []) {
     const siteName = (v.site as unknown as { name: string })?.name ?? 'Unknown'
@@ -37,57 +36,62 @@ export default async function AnalyticsPage() {
     siteMap.set(v.site_id, { ...existing, count: existing.count + 1 })
   }
   const siteData = Array.from(siteMap.values()).sort((a, b) => b.count - a.count)
-
   const currentlyInside = (sites ?? []).filter(v => v.status === 'checked_in').length
 
   return (
-    <div className="flex flex-col">
-      <Topbar title="Analytics" />
-      <div className="p-6 space-y-6">
+    <div className="flex flex-col h-full">
+      <Topbar title="Analytics" description="Last 30 days of visitor activity" />
+
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">Last 30 days</p>
+          <p className="text-sm text-default-400 font-medium">30-day overview</p>
           <ExportMenu companyId={companyId} />
         </div>
 
-        {/* Security alert */}
+        {/* Active visitors alert */}
         {currentlyInside > 0 && (
-          <Card className="border-orange-200 bg-orange-50">
-            <CardContent className="pt-4 pb-4 flex items-center gap-3">
-              <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
-              <p className="text-sm font-medium text-orange-800">
-                <strong>{currentlyInside}</strong> visitor{currentlyInside !== 1 ? 's' : ''} currently inside the building
+          <Card
+            shadow="none"
+            radius="lg"
+            className="border border-warning/30"
+            style={{ background: 'rgba(245,158,11,0.06)' }}
+          >
+            <CardBody className="py-3.5 px-5 flex flex-row items-center gap-3">
+              <span className="h-2.5 w-2.5 rounded-full bg-warning animate-pulse shrink-0" />
+              <p className="text-sm font-semibold text-warning">
+                {currentlyInside} visitor{currentlyInside !== 1 ? 's' : ''} currently inside the building
               </p>
-            </CardContent>
+            </CardBody>
           </Card>
         )}
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Visitor Trends (30 days)</CardTitle>
+          <Card shadow="md" radius="lg" className="bg-content1">
+            <CardHeader className="px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+              <h3 className="font-bold text-foreground text-base">Visitor Trends (30 days)</h3>
             </CardHeader>
-            <CardContent>
+            <CardBody className="px-6 py-4">
               <VisitTrendsChart data={(trends ?? []) as { visit_date: string; visit_count: number }[]} />
-            </CardContent>
+            </CardBody>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Peak Hours</CardTitle>
+          <Card shadow="md" radius="lg" className="bg-content1">
+            <CardHeader className="px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+              <h3 className="font-bold text-foreground text-base">Peak Hours</h3>
             </CardHeader>
-            <CardContent>
+            <CardBody className="px-6 py-4">
               <HourlyChart data={(hourly ?? []) as { hour: number; visit_count: number }[]} />
-            </CardContent>
+            </CardBody>
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Visits by Site</CardTitle>
+        <Card shadow="md" radius="lg" className="bg-content1">
+          <CardHeader className="px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+            <h3 className="font-bold text-foreground text-base">Visits by Site</h3>
           </CardHeader>
-          <CardContent>
+          <CardBody className="px-6 py-4">
             <SiteBreakdown data={siteData} />
-          </CardContent>
+          </CardBody>
         </Card>
       </div>
     </div>

@@ -1,64 +1,85 @@
 import Link from 'next/link'
+import { Chip } from '@heroui/react'
 import { formatDateTime } from '@/lib/utils/format'
 import type { VisitWithRelations } from '@/types/database'
 import { Users } from 'lucide-react'
 
-const STATUS_CONFIG = {
-  expected:    { label: 'Expected',    class: 'bg-sky-50 text-sky-700 border-sky-200' },
-  checked_in:  { label: 'Checked In',  class: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  checked_out: { label: 'Checked Out', class: 'bg-slate-50 text-slate-600 border-slate-200' },
-  cancelled:   { label: 'Cancelled',   class: 'bg-red-50 text-red-700 border-red-200' },
-  no_show:     { label: 'No Show',     class: 'bg-amber-50 text-amber-700 border-amber-200' },
+type StatusKey = 'expected' | 'checked_in' | 'checked_out' | 'cancelled' | 'no_show'
+
+const STATUS_CONFIG: Record<StatusKey, { label: string; color: 'primary' | 'success' | 'default' | 'danger' | 'warning' }> = {
+  expected:    { label: 'Expected',    color: 'primary' },
+  checked_in:  { label: 'Checked In',  color: 'success' },
+  checked_out: { label: 'Checked Out', color: 'default' },
+  cancelled:   { label: 'Cancelled',   color: 'danger' },
+  no_show:     { label: 'No Show',     color: 'warning' },
 }
 
 export default function RecentVisitsTable({ visits }: { visits: VisitWithRelations[] }) {
   if (visits.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <Users className="h-10 w-10 text-muted-foreground/20 mb-3" />
-        <p className="text-sm font-medium text-muted-foreground">No visits yet today</p>
-        <p className="text-xs text-muted-foreground/60 mt-1">Visits will appear here as they come in</p>
+        <div className="h-14 w-14 rounded-full bg-default-100 flex items-center justify-center mb-3">
+          <Users className="h-7 w-7 text-default-300" />
+        </div>
+        <p className="text-sm font-semibold text-foreground mb-1">No visits yet today</p>
+        <p className="text-xs text-default-400">Visits will appear here as they come in</p>
       </div>
     )
   }
 
   return (
-    <div className="overflow-x-auto -mx-1">
+    <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-border">
-            <th className="pb-3 px-1 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Visitor</th>
-            <th className="pb-3 px-1 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Host</th>
-            <th className="pb-3 px-1 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Site</th>
-            <th className="pb-3 px-1 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Time</th>
-            <th className="pb-3 px-1 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+          <tr style={{ borderBottom: '1px solid var(--border)' }}>
+            {['Visitor', 'Host', 'Site', 'Time', 'Status'].map(col => (
+              <th key={col} className="pb-3 text-left text-[11px] font-bold uppercase tracking-widest text-default-400 pr-4">
+                {col}
+              </th>
+            ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-border/60">
-          {visits.map(visit => {
-            const cfg = STATUS_CONFIG[visit.status]
+        <tbody>
+          {visits.map((visit, i) => {
+            const cfg = STATUS_CONFIG[visit.status as StatusKey] ?? STATUS_CONFIG.expected
             return (
-              <tr key={visit.id} className="hover:bg-muted/40 transition-colors group">
-                <td className="py-3 px-1">
+              <tr
+                key={visit.id}
+                className="group transition-colors"
+                style={{
+                  borderBottom: i < visits.length - 1 ? '1px solid var(--border)' : 'none',
+                }}
+              >
+                <td className="py-3.5 pr-4">
                   <Link
                     href={`/dashboard/visitors/${visit.visitor_id}`}
-                    className="font-medium text-foreground group-hover:text-primary transition-colors"
+                    className="font-semibold text-foreground hover:text-primary transition-colors"
                   >
                     {visit.visitor.full_name}
                   </Link>
                   {visit.visitor.company_name && (
-                    <p className="text-xs text-muted-foreground mt-0.5">{visit.visitor.company_name}</p>
+                    <p className="text-xs text-default-400 mt-0.5">{visit.visitor.company_name}</p>
                   )}
                 </td>
-                <td className="py-3 px-1 text-muted-foreground">{visit.host?.full_name ?? '—'}</td>
-                <td className="py-3 px-1 text-muted-foreground">{visit.site.name}</td>
-                <td className="py-3 px-1 text-muted-foreground/70 text-xs whitespace-nowrap">
+                <td className="py-3.5 pr-4 text-default-500 text-sm">
+                  {visit.host?.full_name ?? '—'}
+                </td>
+                <td className="py-3.5 pr-4 text-default-500 text-sm">
+                  {visit.site.name}
+                </td>
+                <td className="py-3.5 pr-4 text-default-400 text-xs whitespace-nowrap">
                   {visit.check_in_at ? formatDateTime(visit.check_in_at) : formatDateTime(visit.created_at)}
                 </td>
-                <td className="py-3 px-1">
-                  <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${cfg.class}`}>
+                <td className="py-3.5">
+                  <Chip
+                    color={cfg.color}
+                    variant="flat"
+                    size="sm"
+                    radius="full"
+                    classNames={{ content: 'text-xs font-semibold' }}
+                  >
                     {cfg.label}
-                  </span>
+                  </Chip>
                 </td>
               </tr>
             )

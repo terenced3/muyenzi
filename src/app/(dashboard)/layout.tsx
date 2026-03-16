@@ -12,7 +12,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   return (
     <UserProvider>
-      <div className="flex h-screen overflow-hidden bg-background">
+      <div className="flex h-screen overflow-hidden" style={{ background: 'var(--background)' }}>
         {/* Sidebar (desktop) */}
         <div className="hidden lg:flex lg:flex-col">
           <Sidebar />

@@ -1,5 +1,5 @@
+import { Card, CardBody } from '@heroui/react'
 import type { LucideIcon } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 interface StatsCardProps {
   title: string
@@ -7,26 +7,33 @@ interface StatsCardProps {
   description?: string
   icon: LucideIcon
   trend?: { value: number; label: string }
-  className?: string
-  accent?: 'violet' | 'emerald' | 'amber' | 'sky'
+  accent?: 'primary' | 'success' | 'warning' | 'secondary'
 }
 
-const accentStyles = {
-  violet: {
-    icon: 'bg-primary/10 text-primary',
-    border: 'border-l-primary',
+const accentConfig = {
+  primary: {
+    iconBg: 'bg-primary/10',
+    iconColor: 'text-primary',
+    borderColor: '#6366f1',
+    glowColor: 'rgba(99,102,241,0.15)',
   },
-  emerald: {
-    icon: 'bg-emerald-50 text-emerald-600',
-    border: 'border-l-emerald-500',
+  success: {
+    iconBg: 'bg-success/10',
+    iconColor: 'text-success',
+    borderColor: '#10b981',
+    glowColor: 'rgba(16,185,129,0.12)',
   },
-  amber: {
-    icon: 'bg-amber-50 text-amber-600',
-    border: 'border-l-amber-500',
+  warning: {
+    iconBg: 'bg-warning/10',
+    iconColor: 'text-warning',
+    borderColor: '#f59e0b',
+    glowColor: 'rgba(245,158,11,0.12)',
   },
-  sky: {
-    icon: 'bg-sky-50 text-sky-600',
-    border: 'border-l-sky-500',
+  secondary: {
+    iconBg: 'bg-secondary/10',
+    iconColor: 'text-secondary',
+    borderColor: '#7c3aed',
+    glowColor: 'rgba(124,58,237,0.12)',
   },
 }
 
@@ -36,40 +43,48 @@ export default function StatsCard({
   description,
   icon: Icon,
   trend,
-  className,
-  accent = 'violet',
+  accent = 'primary',
 }: StatsCardProps) {
-  const styles = accentStyles[accent]
+  const cfg = accentConfig[accent]
 
   return (
-    <div
-      className={cn(
-        'bg-card rounded-xl border border-border border-l-4 px-5 py-4 shadow-sm hover:shadow-md transition-shadow duration-200',
-        styles.border,
-        className
-      )}
+    <Card
+      shadow="md"
+      radius="lg"
+      className="bg-content1 border-none"
+      style={{
+        borderLeft: `3px solid ${cfg.borderColor}`,
+        boxShadow: `0 4px 24px ${cfg.glowColor}, 0 1px 3px rgba(0,0,0,0.08)`,
+      }}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
-            {title}
-          </p>
-          <p className="text-3xl font-bold text-foreground tabular-nums leading-none">
-            {value}
-          </p>
-          {description && (
-            <p className="text-xs text-muted-foreground mt-1.5">{description}</p>
-          )}
-          {trend && (
-            <p className={cn('text-xs mt-1.5 font-medium', trend.value >= 0 ? 'text-emerald-600' : 'text-red-500')}>
-              {trend.value >= 0 ? '▲' : '▼'} {Math.abs(trend.value)}% {trend.label}
+      <CardBody className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-default-400 mb-2">
+              {title}
             </p>
-          )}
+            <p className="text-4xl font-bold text-foreground tabular-nums leading-none">
+              {value}
+            </p>
+            {description && (
+              <p className="text-xs text-default-400 mt-2">{description}</p>
+            )}
+            {trend && (
+              <div className="flex items-center gap-1 mt-2">
+                <span
+                  className={`text-xs font-semibold ${trend.value >= 0 ? 'text-success' : 'text-danger'}`}
+                >
+                  {trend.value >= 0 ? '▲' : '▼'} {Math.abs(trend.value)}%
+                </span>
+                <span className="text-xs text-default-400">{trend.label}</span>
+              </div>
+            )}
+          </div>
+          <div className={`rounded-xl p-3 shrink-0 ${cfg.iconBg}`}>
+            <Icon className={`h-6 w-6 ${cfg.iconColor}`} />
+          </div>
         </div>
-        <div className={cn('rounded-lg p-2.5 shrink-0', styles.icon)}>
-          <Icon className="h-5 w-5" />
-        </div>
-      </div>
-    </div>
+      </CardBody>
+    </Card>
   )
 }
