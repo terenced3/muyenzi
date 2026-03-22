@@ -1,3 +1,13 @@
+import { config } from 'dotenv'
+import { resolve } from 'path'
+
+// Load .env.local before module options are evaluated
+config({ path: resolve(process.cwd(), '.env.local') })
+
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseKey = process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+
 export default defineNuxtConfig({
   devtools: { enabled: true },
 
@@ -8,9 +18,9 @@ export default defineNuxtConfig({
   ],
 
   supabase: {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    url: supabaseUrl,
+    key: supabaseKey,
+    serviceKey: supabaseServiceKey,
     redirect: false,
   },
 
@@ -24,10 +34,10 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
-    supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    supabaseServiceKey,
     resendApiKey: process.env.RESEND_API_KEY,
     public: {
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      supabaseUrl,
     },
   },
 
