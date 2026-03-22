@@ -23,13 +23,18 @@ async function fetchSites() {
   loading.value = false
 }
 
+const deletingId = ref<string | null>(null)
+
 async function deleteSite(id: string, name: string) {
+  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
+  deletingId.value = id
   const { error } = await supabase.from('sites').delete().eq('id', id)
+  deletingId.value = null
   if (error) {
     toast.add({ title: 'Error', description: error.message, color: 'red' })
     return
   }
-  toast.add({ title: 'Site deleted', description: `${name} has been removed.` })
+  toast.add({ title: 'Site deleted', description: `${name} has been removed.`, color: 'orange' })
   sites.value = sites.value.filter(s => s.id !== id)
 }
 
@@ -83,6 +88,7 @@ watch(user, (u) => { if (u) fetchSites() }, { immediate: true })
               color="red"
               variant="ghost"
               size="xs"
+              :loading="deletingId === site.id"
               @click="deleteSite(site.id, site.name)"
             />
           </div>

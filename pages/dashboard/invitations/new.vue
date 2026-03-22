@@ -8,7 +8,7 @@ const { user } = useUser()
 const sites = ref<{ id: string; name: string }[]>([])
 const hosts = ref<{ id: string; full_name: string }[]>([])
 
-onMounted(async () => {
+async function fetchOptions() {
   if (!user.value) return
   const [{ data: s }, { data: h }] = await Promise.all([
     supabase.from('sites').select('id, name').eq('company_id', user.value.company_id),
@@ -16,7 +16,9 @@ onMounted(async () => {
   ])
   sites.value = s ?? []
   hosts.value = h ?? []
-})
+}
+
+watch(user, (u) => { if (u) fetchOptions() }, { immediate: true })
 </script>
 
 <template>

@@ -50,7 +50,8 @@ async function changeRole(userId: string, role: UserRole) {
     return
   }
   users.value = users.value.map(u => u.id === userId ? { ...u, role } : u)
-  toast.add({ title: 'Role updated', color: 'green' })
+  const member = users.value.find(u => u.id === userId)
+  toast.add({ title: 'Role updated', description: `${member?.full_name ?? 'User'} is now a ${ROLE_LABELS[role]}.`, color: 'green' })
 }
 
 function initials(name: string) {

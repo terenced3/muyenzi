@@ -29,7 +29,7 @@ async function onSubmit() {
     toast.add({ title: 'Error', description: error.message, color: 'red' })
     return
   }
-  toast.add({ title: 'Site created', color: 'green' })
+  toast.add({ title: 'Site added successfully', description: `${state.name} is now available for visitor check-ins.`, color: 'green' })
   await navigateTo('/dashboard/sites')
 }
 </script>
