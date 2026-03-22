@@ -8,74 +8,156 @@ const emit = defineEmits<{
   back: []
 }>()
 
-const form = reactive({ name: '', email: '', company: '', purpose: '' })
+const form = reactive({ name: '', email: '', company: '', purpose: '', phone: '' })
 const loading = ref(false)
+const fieldErrors = reactive<Record<string, string>>({})
+const serverError = ref<string | null>(null)
+
+function validate(): boolean {
+  Object.keys(fieldErrors).forEach(k => delete fieldErrors[k])
+  if (!form.name.trim()) {
+    fieldErrors.name = 'Full name is required'
+  }
+  if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    fieldErrors.email = 'Enter a valid email address'
+  }
+  if (form.phone && !/^\+?[\d\s\-().]{7,20}$/.test(form.phone)) {
+    fieldErrors.phone = 'Enter a valid phone number'
+  }
+  return Object.keys(fieldErrors).length === 0
+}
 
 async function submit() {
-  if (!form.name.trim()) return
+  if (!validate()) return
   loading.value = true
+  serverError.value = null
   emit('error', '')
+
   const res = await fetch(`/api/kiosk/${props.siteId}/checkin`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ walk_in: true, ...form, company_id: props.companyId }),
+    body: JSON.stringify({
+      walk_in: true,
+      name: form.name.trim(),
+      email: form.email.trim() || undefined,
+      company: form.company.trim() || undefined,
+      purpose: form.purpose.trim() || undefined,
+      phone: form.phone.trim() || undefined,
+      company_id: props.companyId,
+    }),
   })
   const data = await res.json()
   loading.value = false
-  if (!res.ok) { emit('error', data.error ?? 'Something went wrong'); return }
+
+  if (!res.ok) {
+    const msg = data.statusMessage ?? data.error ?? 'Something went wrong'
+    serverError.value = msg
+    emit('error', msg)
+    return
+  }
   emit('success', data.visit)
 }
 </script>
 
 <template>
   <div class="space-y-4">
+    <!-- Header -->
     <div class="text-center mb-2">
       <UIcon name="i-lucide-user-plus" class="h-10 w-10 text-slate-400 mx-auto mb-3" />
       <h2 class="font-semibold text-slate-900 text-lg">Walk-in registration</h2>
+      <p class="text-sm text-slate-500 mt-1">No invitation? Fill in your details to check in.</p>
     </div>
+
+    <!-- Server error -->
+    <div v-if="serverError" class="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+      <UIcon name="i-lucide-alert-circle" class="h-4 w-4 text-red-500 shrink-0" />
+      <p class="text-sm text-red-700">{{ serverError }}</p>
+    </div>
+
+    <!-- Form fields -->
     <div class="space-y-3">
+      <!-- Full name -->
       <div>
-        <label class="text-sm font-medium text-slate-700">Full name *</label>
+        <label class="text-sm font-medium text-slate-700">
+          Full name <span class="text-red-500">*</span>
+        </label>
         <input
           v-model="form.name"
-          class="mt-1 w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-slate-900 transition-colors"
+          class="mt-1 w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none transition-colors"
+          :class="fieldErrors.name ? 'border-red-400 focus:border-red-500 bg-red-50' : 'border-slate-200 focus:border-slate-900'"
           placeholder="Jane Smith"
+          autocomplete="name"
         />
+        <p v-if="fieldErrors.name" class="text-xs text-red-600 mt-1">{{ fieldErrors.name }}</p>
       </div>
+
+      <!-- Email -->
       <div>
         <label class="text-sm font-medium text-slate-700">Email</label>
         <input
           v-model="form.email"
           type="email"
-          class="mt-1 w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-slate-900 transition-colors"
+          class="mt-1 w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none transition-colors"
+          :class="fieldErrors.email ? 'border-red-400 focus:border-red-500 bg-red-50' : 'border-slate-200 focus:border-slate-900'"
           placeholder="jane@acme.com"
+          autocomplete="email"
         />
+        <p v-if="fieldErrors.email" class="text-xs text-red-600 mt-1">{{ fieldErrors.email }}</p>
       </div>
+
+      <!-- Phone -->
+      <div>
+        <label class="text-sm font-medium text-slate-700">Phone</label>
+        <input
+          v-model="form.phone"
+          type="tel"
+          class="mt-1 w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none transition-colors"
+          :class="fieldErrors.phone ? 'border-red-400 focus:border-red-500 bg-red-50' : 'border-slate-200 focus:border-slate-900'"
+          placeholder="+1 555 000 1234"
+          autocomplete="tel"
+        />
+        <p v-if="fieldErrors.phone" class="text-xs text-red-600 mt-1">{{ fieldErrors.phone }}</p>
+      </div>
+
+      <!-- Company -->
       <div>
         <label class="text-sm font-medium text-slate-700">Company</label>
         <input
           v-model="form.company"
-          class="mt-1 w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-slate-900 transition-colors"
+          class="mt-1 w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-slate-900 transition-colors"
           placeholder="Acme Corp"
+          autocomplete="organization"
         />
       </div>
+
+      <!-- Purpose -->
       <div>
         <label class="text-sm font-medium text-slate-700">Purpose of visit</label>
         <input
           v-model="form.purpose"
-          class="mt-1 w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-slate-900 transition-colors"
-          placeholder="Meeting, Delivery…"
+          class="mt-1 w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-slate-900 transition-colors"
+          placeholder="Meeting, Delivery, Interview…"
         />
       </div>
     </div>
+
+    <!-- Submit -->
     <button
-      class="w-full h-12 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50"
+      class="w-full h-13 py-3.5 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 active:bg-slate-700 transition-colors disabled:opacity-40"
       :disabled="loading || !form.name.trim()"
       @click="submit"
     >
-      {{ loading ? 'Checking in…' : 'Check In' }}
+      <span v-if="loading" class="flex items-center justify-center gap-2">
+        <UIcon name="i-lucide-loader-2" class="h-5 w-5 animate-spin" />
+        Checking in…
+      </span>
+      <span v-else>Check In</span>
     </button>
-    <button class="w-full py-3 text-sm text-slate-500 hover:text-slate-900 transition-colors" @click="emit('back')">
+
+    <button
+      class="w-full py-3 text-sm text-slate-500 hover:text-slate-900 transition-colors"
+      @click="emit('back')"
+    >
       Back
     </button>
   </div>

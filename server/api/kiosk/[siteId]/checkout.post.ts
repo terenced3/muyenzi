@@ -8,13 +8,32 @@ function getSupabase() {
   )
 }
 
+function normalizeCode(code: string): string {
+  return code.toUpperCase().replace(/-/g, '').trim()
+}
+
 export default defineEventHandler(async (event) => {
   const supabase = getSupabase()
   const siteId = getRouterParam(event, 'siteId')!
-  const { access_code } = await readBody(event)
+  const body = await readBody(event)
+  const { access_code, qr_data } = body
 
-  if (!access_code) {
-    throw createError({ statusCode: 400, statusMessage: 'Access code required' })
+  let resolvedCode: string | null = null
+
+  if (access_code) {
+    resolvedCode = normalizeCode(access_code)
+  } else if (qr_data) {
+    try {
+      const parsed = JSON.parse(qr_data)
+      if (!parsed.accessCode) throw new Error('missing accessCode in QR')
+      resolvedCode = normalizeCode(parsed.accessCode)
+    } catch {
+      throw createError({ statusCode: 400, statusMessage: 'Invalid QR code data' })
+    }
+  }
+
+  if (!resolvedCode) {
+    throw createError({ statusCode: 400, statusMessage: 'Access code or QR data required' })
   }
 
   const { data: visits, error } = await supabase
@@ -22,7 +41,7 @@ export default defineEventHandler(async (event) => {
     .select('*, visitor:visitors(*), site:sites(*)')
     .eq('site_id', siteId)
     .eq('status', 'checked_in')
-    .eq('access_code', access_code.toUpperCase().replace('-', ''))
+    .eq('access_code', resolvedCode)
     .limit(1)
 
   if (error || !visits?.length) {
@@ -38,7 +57,7 @@ export default defineEventHandler(async (event) => {
     .select('*, visitor:visitors(*), site:sites(*)')
     .single()
 
-  if (updateError) {
+  if (updateError || !updated) {
     throw createError({ statusCode: 500, statusMessage: 'Failed to check out' })
   }
 

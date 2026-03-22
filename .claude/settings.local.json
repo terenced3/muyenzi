@@ -6,7 +6,9 @@
       "Bash(git commit:*)",
       "Bash(npm info:*)",
       "Bash(npm install:*)",
-      "Bash(npx nuxt:*)"
+      "Bash(npx nuxt:*)",
+      "Bash(git push:*)",
+      "Bash(wc -l /Users/terencedube/muyenzi/pages/dashboard/sites/[siteId].vue)"
     ]
   }
 }

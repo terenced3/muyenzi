@@ -7,7 +7,15 @@ const siteId = route.params.siteId as string
 const config = useRuntimeConfig()
 const { createClient } = await import('@supabase/supabase-js')
 
-const site = ref<{ id: string; name: string; address: string | null; company_id: string } | null>(null)
+type KioskSite = {
+  id: string
+  name: string
+  address: string | null
+  company_id: string
+  company: { name: string; logo_url: string | null } | null
+}
+
+const site = ref<KioskSite | null>(null)
 
 onMounted(async () => {
   const supabase = createClient(
@@ -16,14 +24,15 @@ onMounted(async () => {
   )
   const { data } = await supabase
     .from('sites')
-    .select('id, name, address, company_id')
+    .select('id, name, address, company_id, company:companies(name, logo_url)')
     .eq('id', siteId)
     .single()
+
   if (!data) {
     await navigateTo('/404')
     return
   }
-  site.value = data
+  site.value = data as KioskSite
 })
 </script>
 

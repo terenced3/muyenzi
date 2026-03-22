@@ -8,37 +8,49 @@ function getSupabase() {
   )
 }
 
+function normalizeCode(code: string): string {
+  return code.toUpperCase().replace(/-/g, '').trim()
+}
+
 export default defineEventHandler(async (event) => {
   const supabase = getSupabase()
   const siteId = getRouterParam(event, 'siteId')!
   const body = await readBody(event)
   const { access_code, qr_data } = body
 
-  // Walk-in: create visitor + visit on the spot
+  // ── Walk-in: create visitor + visit on the spot ──
   if (body.walk_in) {
-    const { data: visitor } = await supabase
+    if (!body.name?.trim()) {
+      throw createError({ statusCode: 400, statusMessage: 'Full name is required' })
+    }
+    if (!body.company_id) {
+      throw createError({ statusCode: 400, statusMessage: 'company_id is required' })
+    }
+
+    const { data: visitor, error: visitorError } = await supabase
       .from('visitors')
       .insert({
         company_id: body.company_id,
-        full_name: body.name,
-        email: body.email || null,
-        company_name: body.company || null,
+        full_name: body.name.trim(),
+        email: body.email?.trim() || null,
+        phone: body.phone?.trim() || null,
+        company_name: body.company?.trim() || null,
       })
       .select()
       .single()
 
-    if (!visitor) {
+    if (visitorError || !visitor) {
       throw createError({ statusCode: 500, statusMessage: 'Failed to create visitor' })
     }
 
     const accessCode = generateAccessCode()
-    const { data: newVisit } = await supabase
+    const { data: newVisit, error: visitError } = await supabase
       .from('visits')
       .insert({
         company_id: body.company_id,
         site_id: siteId,
         visitor_id: visitor.id,
-        purpose: body.purpose || null,
+        purpose: body.purpose?.trim() || null,
         status: 'checked_in',
         check_in_at: new Date().toISOString(),
         access_code: accessCode,
@@ -48,29 +60,41 @@ export default defineEventHandler(async (event) => {
       .select('*, visitor:visitors(*), site:sites(*), host:users(*)')
       .single()
 
+    if (visitError || !newVisit) {
+      throw createError({ statusCode: 500, statusMessage: 'Failed to create visit' })
+    }
+
     return { visit: newVisit }
   }
 
-  let visitQuery = supabase
-    .from('visits')
-    .select('*, visitor:visitors(*), host:users(*), site:sites(*)')
-    .eq('site_id', siteId)
-    .eq('status', 'expected')
+  // ── Pre-registered: look up by access code or QR data ──
+  let resolvedCode: string | null = null
 
   if (access_code) {
-    visitQuery = visitQuery.eq('access_code', access_code.toUpperCase().replace('-', ''))
+    resolvedCode = normalizeCode(access_code)
   } else if (qr_data) {
     try {
       const parsed = JSON.parse(qr_data)
-      visitQuery = visitQuery.eq('access_code', parsed.accessCode)
+      if (!parsed.accessCode) throw new Error('missing accessCode in QR')
+      resolvedCode = normalizeCode(parsed.accessCode)
     } catch {
-      throw createError({ statusCode: 400, statusMessage: 'Invalid QR code' })
+      throw createError({ statusCode: 400, statusMessage: 'Invalid QR code data' })
     }
   } else {
     throw createError({ statusCode: 400, statusMessage: 'Access code or QR data required' })
   }
 
-  const { data: visits, error } = await visitQuery.limit(1)
+  if (!resolvedCode) {
+    throw createError({ statusCode: 400, statusMessage: 'Invalid access code' })
+  }
+
+  const { data: visits, error } = await supabase
+    .from('visits')
+    .select('*, visitor:visitors(*), host:users(*), site:sites(*)')
+    .eq('site_id', siteId)
+    .eq('status', 'expected')
+    .eq('access_code', resolvedCode)
+    .limit(1)
 
   if (error || !visits?.length) {
     throw createError({ statusCode: 404, statusMessage: 'Visit not found or already checked in' })
@@ -85,7 +109,7 @@ export default defineEventHandler(async (event) => {
     .select('*, visitor:visitors(*), host:users(*), site:sites(*)')
     .single()
 
-  if (updateError) {
+  if (updateError || !updated) {
     throw createError({ statusCode: 500, statusMessage: 'Failed to check in' })
   }
 
