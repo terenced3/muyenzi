@@ -26,7 +26,7 @@ const roleOptions: { label: string; value: UserRole }[] = [
   { label: 'Host', value: 'host' },
 ]
 
-onMounted(async () => {
+async function fetchUsers() {
   if (!user.value) return
   if (user.value.role !== 'admin') {
     await navigateTo('/dashboard')
@@ -39,7 +39,9 @@ onMounted(async () => {
     .order('created_at', { ascending: true })
   users.value = (data ?? []) as User[]
   loading.value = false
-})
+}
+
+watch(user, (u) => { if (u) fetchUsers() }, { immediate: true })
 
 async function changeRole(userId: string, role: UserRole) {
   const { error } = await supabase.from('users').update({ role }).eq('id', userId)

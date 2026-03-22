@@ -33,7 +33,7 @@ async function deleteSite(id: string, name: string) {
   sites.value = sites.value.filter(s => s.id !== id)
 }
 
-onMounted(fetchSites)
+watch(user, (u) => { if (u) fetchSites() }, { immediate: true })
 </script>
 
 <template>

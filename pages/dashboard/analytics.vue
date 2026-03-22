@@ -11,7 +11,7 @@ const siteData = ref<{ name: string; count: number }[]>([])
 const currentlyInside = ref(0)
 const loading = ref(true)
 
-onMounted(async () => {
+async function fetchData() {
   if (!user.value) return
   const companyId = user.value.company_id
 
@@ -33,7 +33,9 @@ onMounted(async () => {
   siteData.value = Array.from(siteMap.values()).sort((a, b) => b.count - a.count)
   currentlyInside.value = (s ?? []).filter(v => v.status === 'checked_in').length
   loading.value = false
-})
+}
+
+watch(user, (u) => { if (u) fetchData() }, { immediate: true })
 </script>
 
 <template>

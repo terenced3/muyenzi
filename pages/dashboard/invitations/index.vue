@@ -10,7 +10,7 @@ const { user } = useUser()
 const visits = ref<VisitWithRelations[]>([])
 const loading = ref(true)
 
-onMounted(async () => {
+async function fetchInvitations() {
   if (!user.value) return
   const today = new Date().toISOString().split('T')[0]
   const { data } = await supabase
@@ -23,7 +23,9 @@ onMounted(async () => {
     .limit(50)
   visits.value = (data ?? []) as VisitWithRelations[]
   loading.value = false
-})
+}
+
+watch(user, (u) => { if (u) fetchInvitations() }, { immediate: true })
 </script>
 
 <template>

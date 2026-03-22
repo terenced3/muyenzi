@@ -11,7 +11,7 @@ const stats = ref<{ visitors_today: number; currently_inside: number; visits_thi
 const recentVisits = ref<VisitWithRelations[]>([])
 const loading = ref(true)
 
-onMounted(async () => {
+async function fetchData() {
   if (!user.value) return
   const companyId = user.value.company_id
   const [{ data: s }, { data: v }] = await Promise.all([
@@ -26,7 +26,9 @@ onMounted(async () => {
   stats.value = s as typeof stats.value
   recentVisits.value = (v ?? []) as VisitWithRelations[]
   loading.value = false
-})
+}
+
+watch(user, (u) => { if (u) fetchData() }, { immediate: true })
 </script>
 
 <template>

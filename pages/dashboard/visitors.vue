@@ -72,7 +72,7 @@ function applyFilters() {
   fetchData()
 }
 
-onMounted(fetchData)
+watch(user, (u) => { if (u) fetchData() }, { immediate: true })
 </script>
 
 <template>
