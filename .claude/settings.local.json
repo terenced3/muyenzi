@@ -5,7 +5,8 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(npm info:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npx nuxt:*)"
     ]
   }
 }
