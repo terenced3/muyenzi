@@ -33,6 +33,6 @@ onMounted(async () => {
       <p class="text-slate-400 text-sm mt-1">This kiosk link may be invalid or the site was removed.</p>
     </div>
     <UIcon v-else-if="!site" name="i-lucide-loader-2" class="h-8 w-8 text-white animate-spin" />
-    <KioskKioskShell v-else :site="site" />
+    <KioskShell v-else :site="site" />
   </div>
 </template>
