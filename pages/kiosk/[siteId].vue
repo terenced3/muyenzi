@@ -4,9 +4,6 @@ definePageMeta({ layout: false })
 const route = useRoute()
 const siteId = route.params.siteId as string
 
-const config = useRuntimeConfig()
-const { createClient } = await import('@supabase/supabase-js')
-
 type KioskSite = {
   id: string
   name: string
@@ -18,21 +15,12 @@ type KioskSite = {
 const site = ref<KioskSite | null>(null)
 
 onMounted(async () => {
-  const supabase = createClient(
-    config.public.supabaseUrl,
-    process.env.NUXT_SUPABASE_SERVICE_KEY || '',
-  )
-  const { data } = await supabase
-    .from('sites')
-    .select('id, name, address, company_id, company:companies(name, logo_url)')
-    .eq('id', siteId)
-    .single()
-
-  if (!data) {
+  try {
+    const data = await $fetch<KioskSite>(`/api/kiosk/${siteId}/site`)
+    site.value = data
+  } catch {
     await navigateTo('/404')
-    return
   }
-  site.value = data as KioskSite
 })
 </script>
 

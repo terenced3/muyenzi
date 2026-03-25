@@ -3,6 +3,17 @@ const route = useRoute()
 const supabase = useSupabaseClient()
 const { user, can } = useUser()
 
+const sites = ref<{ id: string }[]>([])
+watch(user, async (u) => {
+  if (!u) return
+  const { data } = await supabase.from('sites').select('id').eq('company_id', u.company_id).order('created_at', { ascending: false })
+  sites.value = data ?? []
+}, { immediate: true })
+
+const kioskHref = computed(() =>
+  sites.value.length === 1 ? `/kiosk/${sites.value[0].id}` : '/dashboard/sites'
+)
+
 const navItems = [
   { href: '/dashboard', label: 'Overview', icon: 'i-lucide-layout-dashboard', exact: true },
   { href: '/dashboard/sites', label: 'Sites', icon: 'i-lucide-building-2' },
@@ -83,7 +94,7 @@ async function handleSignOut() {
           Kiosk
         </p>
         <a
-          href="/kiosk"
+          :href="kioskHref"
           target="_blank"
           class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200"
           style="color: rgba(232,234,255,0.5)"
