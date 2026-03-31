@@ -2,7 +2,15 @@
 import { ROLE_LABELS } from '~/constants/roles'
 import type { User, UserRole } from '~/types/database'
 
-definePageMeta({ layout: 'dashboard' })
+definePageMeta({
+  layout: 'dashboard',
+  middleware: [
+    function () {
+      const { can } = useUser()
+      if (!can('manage_users')) return navigateTo('/dashboard')
+    },
+  ],
+})
 useHead({ title: 'Team – Muyenzi' })
 
 const supabase = useSupabaseClient()
@@ -28,10 +36,6 @@ const roleOptions: { label: string; value: UserRole }[] = [
 
 async function fetchUsers() {
   if (!user.value) return
-  if (user.value.role !== 'admin') {
-    await navigateTo('/dashboard')
-    return
-  }
   const { data } = await supabase
     .from('users')
     .select('*')

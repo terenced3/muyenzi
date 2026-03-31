@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { z } from 'zod'
+import type { VisitorCustomField } from '~/types/database'
 
 const props = defineProps<{
   companyId: string
@@ -19,6 +20,15 @@ interface CreatedVisit {
 
 const created = ref<CreatedVisit | null>(null)
 const loading = ref(false)
+
+const customFields = ref<VisitorCustomField[]>([])
+const customFieldValues = reactive<Record<string, string | number>>({})
+
+watch(() => props.companyId, async (id) => {
+  if (!id) return
+  const data = await $fetch<VisitorCustomField[]>(`/api/visitor-fields?company_id=${id}`).catch(() => [])
+  customFields.value = data
+}, { immediate: true })
 
 const state = reactive({
   visitor_name: '',
@@ -95,7 +105,9 @@ async function onSubmit() {
   }
 
   const accessCode = generateAccessCode()
-  const qrCodeData = JSON.stringify({ visitorId, siteId: state.site_id, accessCode, companyId: props.companyId })
+  const qrCodeData = JSON.stringify({ accessCode, siteId: state.site_id })
+
+  const fieldValues = Object.keys(customFieldValues).length > 0 ? { ...customFieldValues } : null
 
   const { data: visit, error } = await supabase
     .from('visits')
@@ -111,6 +123,7 @@ async function onSubmit() {
       access_code: accessCode,
       qr_code_data: qrCodeData,
       status: 'expected',
+      custom_field_values: fieldValues,
     })
     .select()
     .single()
@@ -141,6 +154,7 @@ function createAnother() {
     site_id: '', host_id: props.hostId, purpose: '',
     visit_date: new Date().toISOString().split('T')[0], visit_time: '', notes: '',
   })
+  Object.keys(customFieldValues).forEach(k => delete customFieldValues[k])
 }
 </script>
 
@@ -231,6 +245,36 @@ function createAnother() {
           </UFormGroup>
           <UFormGroup label="Notes" name="notes" class="sm:col-span-2">
             <UTextarea v-model="state.notes" placeholder="Any additional notes…" :rows="3" />
+          </UFormGroup>
+        </div>
+      </div>
+
+      <!-- Custom fields -->
+      <div v-if="customFields.length > 0">
+        <h3 class="font-medium text-gray-700 mb-3 text-sm">Additional information</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <UFormGroup
+            v-for="field in customFields"
+            :key="field.id"
+            :label="field.label"
+            :required="field.required"
+            :class="field.field_type === 'textarea' ? 'sm:col-span-2' : ''"
+          >
+            <USelect
+              v-if="field.field_type === 'select'"
+              v-model="customFieldValues[field.field_key]"
+              :options="[{ label: 'Select…', value: '' }, ...(field.options ?? []).map(o => ({ label: o, value: o }))]"
+            />
+            <UTextarea
+              v-else-if="field.field_type === 'textarea'"
+              v-model="customFieldValues[field.field_key]"
+              :rows="3"
+            />
+            <UInput
+              v-else
+              v-model="customFieldValues[field.field_key]"
+              :type="field.field_type === 'number' ? 'number' : 'text'"
+            />
           </UFormGroup>
         </div>
       </div>

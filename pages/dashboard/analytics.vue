@@ -1,5 +1,13 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'dashboard' })
+definePageMeta({
+  layout: 'dashboard',
+  middleware: [
+    function () {
+      const { can } = useUser()
+      if (!can('view_analytics')) return navigateTo('/dashboard')
+    },
+  ],
+})
 useHead({ title: 'Analytics – Muyenzi' })
 
 const supabase = useSupabaseClient()

@@ -72,6 +72,35 @@ function applyFilters() {
   fetchData()
 }
 
+const updatingVisitId = ref<string | null>(null)
+
+async function updateStatus(visitId: string, status: 'cancelled' | 'no_show' | 'checked_out') {
+  updatingVisitId.value = visitId
+  const update: Record<string, string> = { status }
+  if (status === 'checked_out') update.check_out_at = new Date().toISOString()
+  const { error } = await supabase.from('visits').update(update).eq('id', visitId)
+  if (error) {
+    useToast().add({ title: 'Error', description: error.message, color: 'red' })
+  } else {
+    const labels: Record<string, string> = { cancelled: 'Cancelled', no_show: 'Marked as no-show', checked_out: 'Checked out' }
+    useToast().add({ title: labels[status], color: 'green' })
+    await fetchData()
+  }
+  updatingVisitId.value = null
+}
+
+function actionsFor(visit: VisitWithRelations) {
+  const items = []
+  if (visit.status === 'expected') {
+    items.push({ label: 'Mark as no-show', icon: 'i-lucide-user-x', click: () => updateStatus(visit.id, 'no_show') })
+    items.push({ label: 'Cancel', icon: 'i-lucide-x-circle', click: () => updateStatus(visit.id, 'cancelled') })
+  }
+  if (visit.status === 'checked_in') {
+    items.push({ label: 'Force check out', icon: 'i-lucide-log-out', click: () => updateStatus(visit.id, 'checked_out') })
+  }
+  return items
+}
+
 watch(user, (u) => { if (u) fetchData() }, { immediate: true })
 </script>
 
@@ -127,7 +156,7 @@ watch(user, (u) => { if (u) fetchData() }, { immediate: true })
           <table class="w-full text-sm">
             <thead>
               <tr class="bg-gray-50 border-b border-gray-100">
-                <th v-for="col in ['Visitor', 'Host', 'Site', 'Check In', 'Duration', 'Status', 'Code']" :key="col"
+                <th v-for="col in ['Visitor', 'Host', 'Site', 'Check In', 'Duration', 'Status', 'Code', '']" :key="col"
                   class="text-left px-5 py-3.5 text-[11px] font-bold uppercase tracking-widest text-gray-400"
                 >
                   {{ col }}
@@ -163,6 +192,20 @@ watch(user, (u) => { if (u) fetchData() }, { immediate: true })
                   <code class="text-xs bg-gray-100 text-gray-600 rounded-lg px-2.5 py-1 font-mono font-semibold tracking-wider">
                     {{ visit.access_code }}
                   </code>
+                </td>
+                <td class="px-5 py-4">
+                  <UDropdown
+                    v-if="actionsFor(visit).length > 0"
+                    :items="[actionsFor(visit)]"
+                    :popper="{ placement: 'bottom-end' }"
+                  >
+                    <UButton
+                      variant="ghost"
+                      icon="i-lucide-more-horizontal"
+                      size="xs"
+                      :loading="updatingVisitId === visit.id"
+                    />
+                  </UDropdown>
                 </td>
               </tr>
             </tbody>

@@ -56,6 +56,7 @@ export default defineEventHandler(async (event) => {
         access_code: accessCode,
         qr_code_data: JSON.stringify({ accessCode, siteId }),
         visit_date: new Date().toISOString().split('T')[0],
+        custom_field_values: body.custom_field_values ?? null,
       })
       .select('*, visitor:visitors(*), site:sites(*), host:users(*)')
       .single()

@@ -52,6 +52,7 @@ export interface Visit {
   notes: string | null
   visit_date: string
   visit_time: string | null
+  custom_field_values: Record<string, string | number | boolean> | null
   created_at: string
 }
 
@@ -70,6 +71,20 @@ export interface Notification {
   type: string
   message: string
   read: boolean
+  created_at: string
+}
+
+export type CustomFieldType = 'text' | 'number' | 'textarea' | 'select'
+
+export interface VisitorCustomField {
+  id: string
+  company_id: string
+  label: string
+  field_key: string
+  field_type: CustomFieldType
+  options: string[] | null
+  required: boolean
+  sort_order: number
   created_at: string
 }
 
