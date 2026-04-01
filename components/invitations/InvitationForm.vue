@@ -136,6 +136,21 @@ async function onSubmit() {
 
   await supabase.from('invitations').insert({ visit_id: visit.id })
 
+  // Send invitation email to visitor
+  if (state.visitor_email) {
+    await $fetch('/api/email/send-invitation', {
+      method: 'POST',
+      body: {
+        visitorEmail: state.visitor_email,
+        visitorName: state.visitor_name,
+        siteName: props.sites.find(s => s.id === state.site_id)?.name ?? 'Unknown',
+        companyName: (visit.visitor as any)?.company_name || 'our office',
+        accessCode: accessCode,
+        qrCodeData,
+      },
+    }).catch(e => console.warn('Failed to send invitation email:', e))
+  }
+
   toast.add({ title: 'Invitation created', color: 'green' })
   created.value = { access_code: accessCode, qr_code_data: qrCodeData, visitor_name: state.visitor_name }
   loading.value = false

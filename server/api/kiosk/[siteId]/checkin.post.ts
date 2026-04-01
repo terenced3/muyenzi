@@ -27,20 +27,49 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: 'company_id is required' })
     }
 
-    const { data: visitor, error: visitorError } = await supabase
-      .from('visitors')
-      .insert({
-        company_id: body.company_id,
-        full_name: body.name.trim(),
-        email: body.email?.trim() || null,
-        phone: body.phone?.trim() || null,
-        company_name: body.company?.trim() || null,
-      })
-      .select()
-      .single()
+    let visitor = null
+    const email = body.email?.trim() || null
 
-    if (visitorError || !visitor) {
-      throw createError({ statusCode: 500, statusMessage: 'Failed to create visitor' })
+    // Try to find existing visitor by email (if provided) or by name (if email is blank)
+    if (email) {
+      const { data } = await supabase
+        .from('visitors')
+        .select('*')
+        .eq('company_id', body.company_id)
+        .eq('email', email)
+        .single()
+      visitor = data
+    } else {
+      // No email: look up by full_name to prevent duplicate walk-ins
+      const { data } = await supabase
+        .from('visitors')
+        .select('*')
+        .eq('company_id', body.company_id)
+        .eq('full_name', body.name.trim())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+      visitor = data
+    }
+
+    // If not found, create new visitor
+    if (!visitor) {
+      const { data: newVisitor, error: visitorError } = await supabase
+        .from('visitors')
+        .insert({
+          company_id: body.company_id,
+          full_name: body.name.trim(),
+          email,
+          phone: body.phone?.trim() || null,
+          company_name: body.company?.trim() || null,
+        })
+        .select()
+        .single()
+
+      if (visitorError || !newVisitor) {
+        throw createError({ statusCode: 500, statusMessage: 'Failed to create visitor' })
+      }
+      visitor = newVisitor
     }
 
     const accessCode = generateAccessCode()
@@ -116,12 +145,28 @@ export default defineEventHandler(async (event) => {
 
   // Notify host
   if (visit.host_id) {
+    const host = visit.host as any
     await supabase.from('notifications').insert({
       user_id: visit.host_id,
       company_id: visit.company_id,
       type: 'visitor_arrived',
       message: `${visit.visitor.full_name} has arrived at ${visit.site.name}`,
     })
+
+    // Send email to host if email is available
+    if (host?.email) {
+      const checkInTime = updated.check_in_at || new Date().toISOString()
+      await $fetch('/api/email/notify-arrival', {
+        method: 'POST',
+        body: {
+          hostEmail: host.email,
+          hostName: host.full_name,
+          visitorName: updated.visitor.full_name,
+          siteName: updated.site.name,
+          checkInTime,
+        },
+      }).catch(e => console.warn('Failed to send arrival email:', e))
+    }
   }
 
   return { visit: updated }

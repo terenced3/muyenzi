@@ -9,6 +9,7 @@ const { user } = useUser()
 
 const visits = ref<VisitWithRelations[]>([])
 const loading = ref(true)
+const cancellingId = ref<string | null>(null)
 
 async function fetchInvitations() {
   if (!user.value) return
@@ -23,6 +24,18 @@ async function fetchInvitations() {
     .limit(50)
   visits.value = (data ?? []) as VisitWithRelations[]
   loading.value = false
+}
+
+async function cancelInvitation(visitId: string) {
+  cancellingId.value = visitId
+  const { error } = await supabase.from('visits').update({ status: 'cancelled' }).eq('id', visitId)
+  cancellingId.value = null
+  if (error) {
+    useToast().add({ title: 'Error', description: error.message, color: 'red' })
+    return
+  }
+  useToast().add({ title: 'Invitation cancelled', color: 'green' })
+  await fetchInvitations()
 }
 
 watch(user, (u) => { if (u) fetchInvitations() }, { immediate: true })
@@ -52,7 +65,7 @@ watch(user, (u) => { if (u) fetchInvitations() }, { immediate: true })
           <table class="w-full text-sm">
             <thead>
               <tr class="border-b border-gray-100 bg-gray-50">
-                <th v-for="col in ['Visitor', 'Host', 'Site', 'Visit Date', 'Access Code']" :key="col"
+                <th v-for="col in ['Visitor', 'Host', 'Site', 'Visit Date', 'Access Code', '']" :key="col"
                   class="text-left px-4 py-3 text-xs font-bold uppercase tracking-widest text-gray-400"
                 >
                   {{ col }}
@@ -72,6 +85,17 @@ watch(user, (u) => { if (u) fetchInvitations() }, { immediate: true })
                   <code class="text-xs bg-gray-100 rounded px-1.5 py-0.5 font-mono font-semibold text-gray-600">
                     {{ visit.access_code }}
                   </code>
+                </td>
+                <td class="px-4 py-3 flex items-center gap-2 justify-end">
+                  <UButton variant="ghost" size="xs" :to="`/dashboard/invitations/${visit.id}/edit`" icon="i-lucide-pencil" />
+                  <UButton
+                    variant="ghost"
+                    size="xs"
+                    color="red"
+                    icon="i-lucide-trash-2"
+                    :loading="cancellingId === visit.id"
+                    @click="cancelInvitation(visit.id)"
+                  />
                 </td>
               </tr>
             </tbody>

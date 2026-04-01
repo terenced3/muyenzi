@@ -32,6 +32,7 @@ const loading = ref(true)
 const search = ref((route.query.q as string) ?? '')
 const siteFilter = ref((route.query.site as string) ?? '')
 const statusFilter = ref((route.query.status as string) ?? '')
+const showOwnOnly = ref(false)
 
 const filtered = computed(() => {
   const q = search.value.toLowerCase()
@@ -56,6 +57,7 @@ async function fetchData() {
 
   if (siteFilter.value) query = query.eq('site_id', siteFilter.value)
   if (statusFilter.value) query = query.eq('status', statusFilter.value)
+  if (showOwnOnly.value) query = query.eq('host_id', user.value.id)
 
   const [{ data: v }, { data: s }] = await Promise.all([
     query,
@@ -131,6 +133,11 @@ watch(user, (u) => { if (u) fetchData() }, { immediate: true })
           @change="applyFilters"
         />
         <UButton variant="soft" @click="applyFilters">Filter</UButton>
+
+        <div v-if="user?.role === 'host'" class="flex items-center gap-2 border-l border-gray-200 pl-3">
+          <UToggle v-model="showOwnOnly" @update:model-value="fetchData" />
+          <span class="text-sm text-gray-600">My visits</span>
+        </div>
 
         <div class="ml-auto flex items-center gap-2">
           <SharedExportMenu :company-id="user?.company_id ?? ''" />
