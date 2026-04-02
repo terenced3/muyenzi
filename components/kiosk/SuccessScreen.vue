@@ -2,7 +2,7 @@
 import type { VisitWithRelations } from '~/types/database'
 
 const props = defineProps<{
-  visit: VisitWithRelations
+  visit: VisitWithRelations | any
   tab: 'checkin' | 'checkout'
 }>()
 
@@ -12,6 +12,7 @@ const RESET_SECONDS = 8
 const remaining = ref(RESET_SECONDS)
 
 const isCheckout = computed(() => props.tab === 'checkout')
+const isOffline = computed(() => props.visit?.id?.startsWith('offline-'))
 
 // SVG circle countdown
 const RADIUS = 28
@@ -39,31 +40,44 @@ onUnmounted(() => {
 
 <template>
   <div class="bg-white rounded-2xl shadow-xl p-8 text-center">
+    <!-- Offline Badge -->
+    <div v-if="isOffline" class="mb-4 inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-full px-3 py-1 text-xs font-medium text-amber-900">
+      <UIcon name="i-lucide-wifi-off" class="h-3 w-3" />
+      Saved offline
+    </div>
+
     <!-- Icon -->
     <div
       class="h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-6"
-      :class="isCheckout ? 'bg-orange-100' : 'bg-emerald-100'"
+      :class="[
+        isOffline ? 'bg-amber-100' : (isCheckout ? 'bg-orange-100' : 'bg-emerald-100')
+      ]"
     >
       <UIcon
-        :name="isCheckout ? 'i-lucide-log-out' : 'i-lucide-check-circle-2'"
+        :name="isOffline ? 'i-lucide-save' : (isCheckout ? 'i-lucide-log-out' : 'i-lucide-check-circle-2')"
         class="h-10 w-10"
-        :class="isCheckout ? 'text-orange-600' : 'text-emerald-600'"
+        :class="[
+          isOffline ? 'text-amber-600' : (isCheckout ? 'text-orange-600' : 'text-emerald-600')
+        ]"
       />
     </div>
 
     <!-- Message -->
     <h2 class="text-3xl font-bold text-slate-900 mb-2">
-      {{ isCheckout ? 'Goodbye!' : 'Welcome!' }}
+      {{ isOffline ? 'Saved!' : (isCheckout ? 'Goodbye!' : 'Welcome!') }}
     </h2>
     <p class="text-xl text-slate-700 font-medium">{{ visit.visitor?.full_name }}</p>
 
-    <p v-if="!isCheckout && visit.host" class="text-slate-500 mt-2">
+    <p v-if="isOffline" class="text-slate-500 mt-2 text-sm">
+      Check-in saved locally. Will sync when online.
+    </p>
+    <p v-else-if="!isCheckout && visit.host" class="text-slate-500 mt-2">
       Your host <strong>{{ visit.host.full_name }}</strong> has been notified.
     </p>
-    <p v-if="isCheckout" class="text-slate-500 mt-2">
+    <p v-else-if="isCheckout" class="text-slate-500 mt-2">
       Thank you for your visit. Have a safe journey!
     </p>
-    <p v-if="!isCheckout && visit.site" class="text-slate-400 text-sm mt-1">
+    <p v-if="!isCheckout && visit.site && !isOffline" class="text-slate-400 text-sm mt-1">
       Checked in at {{ visit.site.name }}
     </p>
 
@@ -74,13 +88,13 @@ onUnmounted(() => {
         <circle
           :cx="RADIUS + 4" :cy="RADIUS + 4" :r="RADIUS"
           fill="none" stroke-width="4"
-          :stroke="isCheckout ? '#fed7aa' : '#d1fae5'"
+          :stroke="isOffline ? '#fed7aa' : (isCheckout ? '#fed7aa' : '#d1fae5')"
         />
         <!-- Progress arc -->
         <circle
           :cx="RADIUS + 4" :cy="RADIUS + 4" :r="RADIUS"
           fill="none" stroke-width="4"
-          :stroke="isCheckout ? '#ea580c' : '#059669'"
+          :stroke="isOffline ? '#d97706' : (isCheckout ? '#ea580c' : '#059669')"
           :stroke-dasharray="CIRCUMFERENCE"
           :stroke-dashoffset="dashOffset"
           stroke-linecap="round"

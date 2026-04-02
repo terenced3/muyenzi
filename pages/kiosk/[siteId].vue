@@ -16,6 +16,16 @@ const site = ref<KioskSite | null>(null)
 const loadError = ref(false)
 
 onMounted(async () => {
+  // Register service worker for offline support
+  if ('serviceWorker' in navigator) {
+    try {
+      await navigator.serviceWorker.register('/sw.js')
+      console.log('✅ Service Worker registered')
+    } catch (error) {
+      console.warn('❌ Service Worker registration failed:', error)
+    }
+  }
+
   try {
     const data = await $fetch<KioskSite>(`/api/kiosk/${siteId}/site`)
     site.value = data

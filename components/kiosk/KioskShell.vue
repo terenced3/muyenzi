@@ -19,6 +19,8 @@ const method = ref<Method>(null)
 const result = ref<VisitWithRelations | null>(null)
 const error = ref<string | null>(null)
 
+const { isOnline, isSyncing, pendingVisitsCount } = useOfflineSync()
+
 // Idle timeout — reset to home after 60s of inactivity
 const IDLE_MS = 60_000
 let idleTimer: ReturnType<typeof setTimeout> | null = null
@@ -59,7 +61,19 @@ watch(method, (val) => { if (val) resetIdle() })
     class="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6"
     @click="resetIdle"
   >
-    <div class="w-full max-w-lg">
+    <!-- Connection Status Banner -->
+    <div v-if="!isOnline || isSyncing" class="absolute top-0 left-0 right-0 bg-amber-50 border-b border-amber-200 px-4 py-3 text-center text-sm font-medium">
+      <div v-if="!isOnline" class="flex items-center justify-center gap-2 text-amber-900">
+        <UIcon name="i-lucide-wifi-off" class="h-4 w-4" />
+        <span>Offline mode — check-ins will sync automatically</span>
+      </div>
+      <div v-else-if="isSyncing" class="flex items-center justify-center gap-2 text-amber-900">
+        <UIcon name="i-lucide-loader-2" class="h-4 w-4 animate-spin" />
+        <span>Syncing {{ pendingVisitsCount }} pending check-in{{ pendingVisitsCount !== 1 ? 's' : '' }}…</span>
+      </div>
+    </div>
+
+    <div class="w-full max-w-lg" :class="{ 'mt-16': !isOnline || isSyncing }">
 
       <!-- Header -->
       <div class="text-center mb-8">

@@ -47,30 +47,65 @@ async function submit() {
   serverError.value = null
   emit('error', '')
 
-  const res = await fetch(`/api/kiosk/${props.siteId}/checkin`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      walk_in: true,
-      name: form.name.trim(),
-      email: form.email.trim() || undefined,
-      company: form.company.trim() || undefined,
-      purpose: form.purpose.trim() || undefined,
-      phone: form.phone.trim() || undefined,
-      company_id: props.companyId,
-      custom_field_values: Object.keys(customFieldValues).length > 0 ? { ...customFieldValues } : undefined,
-    }),
-  })
-  const data = await res.json()
-  loading.value = false
-
-  if (!res.ok) {
-    const msg = data.statusMessage ?? data.error ?? 'Something went wrong'
-    serverError.value = msg
-    emit('error', msg)
-    return
+  const payload = {
+    walk_in: true,
+    name: form.name.trim(),
+    email: form.email.trim() || undefined,
+    company: form.company.trim() || undefined,
+    purpose: form.purpose.trim() || undefined,
+    phone: form.phone.trim() || undefined,
+    company_id: props.companyId,
+    custom_field_values: Object.keys(customFieldValues).length > 0 ? { ...customFieldValues } : undefined,
   }
-  emit('success', data.visit)
+
+  try {
+    const res = await fetch(`/api/kiosk/${props.siteId}/checkin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const data = await res.json()
+    loading.value = false
+
+    if (!res.ok) {
+      const msg = data.statusMessage ?? data.error ?? 'Something went wrong'
+      serverError.value = msg
+      emit('error', msg)
+      return
+    }
+    emit('success', data.visit)
+  } catch (err) {
+    // Network error — save offline
+    loading.value = false
+    const { saveVisitOffline } = useOfflineSync()
+
+    const result = await saveVisitOffline({
+      company_id: props.companyId,
+      site_id: props.siteId,
+      walk_in: true,
+      visitor_name: form.name.trim(),
+      visitor_email: form.email?.trim() || null,
+      visitor_phone: form.phone?.trim() || null,
+      visitor_company: form.company?.trim() || null,
+      purpose: form.purpose?.trim() || null,
+      custom_field_values: payload.custom_field_values || null,
+    })
+
+    if (result.success) {
+      // Show offline confirmation
+      serverError.value = null
+      emit('success', {
+        id: 'offline-' + Date.now(),
+        visitor: { full_name: form.name.trim() },
+        site: { name: 'Offline' },
+        access_code: 'OFFLINE',
+        status: 'checking_in',
+      } as any)
+    } else {
+      serverError.value = 'Failed to save check-in. Please try again.'
+      emit('error', serverError.value)
+    }
+  }
 }
 </script>
 
