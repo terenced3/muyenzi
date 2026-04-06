@@ -121,7 +121,7 @@ async function printBadge() {
         <script>
           window.print();
           window.onafterprint = function() { window.close(); };
-        </script>
+        <\/script>
       </body>
     </html>
   `)
