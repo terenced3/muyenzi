@@ -8,7 +8,7 @@ const route = useRoute()
 const toast = useToast()
 const siteId = route.params.siteId as string
 
-const state = reactive({ name: '', address: '' })
+const state = reactive({ name: '', address: '', printer_enabled: true, printer_model: '' })
 const loading = ref(false)
 const fetchLoading = ref(true)
 
@@ -17,6 +17,8 @@ useHead({ title: 'Edit Site – Muyenzi' })
 const schema = z.object({
   name: z.string().min(2, 'Site name is required'),
   address: z.string().optional(),
+  printer_enabled: z.boolean().optional(),
+  printer_model: z.string().optional(),
 })
 
 onMounted(async () => {
@@ -24,6 +26,8 @@ onMounted(async () => {
   if (!data) { await navigateTo('/dashboard/sites'); return }
   state.name = data.name
   state.address = data.address ?? ''
+  state.printer_enabled = data.printer_enabled ?? true
+  state.printer_model = data.printer_model ?? ''
   fetchLoading.value = false
 })
 
@@ -32,6 +36,8 @@ async function onSubmit() {
   const { error } = await supabase.from('sites').update({
     name: state.name,
     address: state.address || null,
+    printer_enabled: state.printer_enabled,
+    printer_model: state.printer_model || null,
   }).eq('id', siteId)
   loading.value = false
   if (error) {
@@ -62,6 +68,23 @@ async function onSubmit() {
           <UFormGroup label="Address" name="address">
             <UInput v-model="state.address" />
           </UFormGroup>
+
+          <!-- Printer Settings -->
+          <div class="border-t pt-4 mt-4">
+            <h3 class="text-sm font-semibold text-gray-900 mb-3">Badge Printer Settings</h3>
+            <div class="space-y-3">
+              <UFormGroup label="Enable badge printing" name="printer_enabled">
+                <UToggle v-model="state.printer_enabled" />
+              </UFormGroup>
+              <UFormGroup v-if="state.printer_enabled" label="Printer Model (optional)" name="printer_model" hint="e.g. Zebra ZP450, Honeywell PM42">
+                <UInput v-model="state.printer_model" placeholder="Printer model" />
+              </UFormGroup>
+              <p v-if="state.printer_enabled" class="text-xs text-gray-500">
+                When enabled, visitors can print their visitor badge directly from the kiosk after check-in.
+              </p>
+            </div>
+          </div>
+
           <div class="flex gap-3 pt-2">
             <UButton variant="outline" @click="navigateTo('/dashboard/sites')">Cancel</UButton>
             <UButton type="submit" :loading="loading">Save Changes</UButton>

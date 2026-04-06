@@ -81,6 +81,11 @@ onUnmounted(() => {
       Checked in at {{ visit.site.name }}
     </p>
 
+    <!-- Badge Printing Option (check-in only) -->
+    <div v-if="!isCheckout && !isOffline && props.visit?.site?.printer_enabled" class="mt-6 pt-4 border-t border-slate-200">
+      <KioskBadgePrinter :visit="props.visit" :printer-enabled="props.visit.site.printer_enabled" />
+    </div>
+
     <!-- Countdown ring -->
     <div class="flex flex-col items-center mt-8 mb-2">
       <svg :width="RADIUS * 2 + 8" :height="RADIUS * 2 + 8" class="-rotate-90">
