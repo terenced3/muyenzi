@@ -23,34 +23,24 @@ export default defineEventHandler(async (event) => {
     if (!body.name?.trim()) {
       throw createError({ statusCode: 400, statusMessage: 'Full name is required' })
     }
+    if (!body.phone?.trim()) {
+      throw createError({ statusCode: 400, statusMessage: 'Phone number is required' })
+    }
     if (!body.company_id) {
       throw createError({ statusCode: 400, statusMessage: 'company_id is required' })
     }
 
-    let visitor = null
-    const email = body.email?.trim() || null
+    const phone = body.phone.trim()
 
-    // Try to find existing visitor by email (if provided) or by name (if email is blank)
-    if (email) {
-      const { data } = await supabase
-        .from('visitors')
-        .select('*')
-        .eq('company_id', body.company_id)
-        .eq('email', email)
-        .single()
-      visitor = data
-    } else {
-      // No email: look up by full_name to prevent duplicate walk-ins
-      const { data } = await supabase
-        .from('visitors')
-        .select('*')
-        .eq('company_id', body.company_id)
-        .eq('full_name', body.name.trim())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-      visitor = data
-    }
+    // Check if visitor already exists by phone (primary identifier)
+    const { data: existingVisitor } = await supabase
+      .from('visitors')
+      .select('*')
+      .eq('company_id', body.company_id)
+      .eq('phone', phone)
+      .maybeSingle()
+
+    let visitor = existingVisitor
 
     // If not found, create new visitor
     if (!visitor) {
@@ -59,8 +49,8 @@ export default defineEventHandler(async (event) => {
         .insert({
           company_id: body.company_id,
           full_name: body.name.trim(),
-          email,
-          phone: body.phone?.trim() || null,
+          email: body.email?.trim() || null,
+          phone,
           company_name: body.company?.trim() || null,
         })
         .select()

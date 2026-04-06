@@ -47,7 +47,7 @@ const schema = z.object({
   visitor_name: z.string().min(2, 'Visitor name is required'),
   visitor_company: z.string().optional(),
   visitor_email: z.string().email('Valid email required').optional().or(z.literal('')),
-  visitor_phone: z.string().optional(),
+  visitor_phone: z.string().min(7, 'Phone number is required').regex(/^\+?[\d\s\-().]{7,20}$/, 'Enter a valid phone number'),
   site_id: z.string().min(1, 'Please select a site'),
   host_id: z.string().min(1, 'Please select a host'),
   purpose: z.string().optional(),
@@ -75,9 +75,9 @@ async function onSubmit() {
       company_id: props.companyId,
       full_name: state.visitor_name,
       email: state.visitor_email || null,
-      phone: state.visitor_phone || null,
+      phone: state.visitor_phone,
       company_name: state.visitor_company || null,
-    }, { onConflict: 'company_id,email', ignoreDuplicates: false })
+    }, { onConflict: 'company_id,phone', ignoreDuplicates: false })
     .select()
     .single()
 
@@ -90,7 +90,7 @@ async function onSubmit() {
         company_id: props.companyId,
         full_name: state.visitor_name,
         email: state.visitor_email || null,
-        phone: state.visitor_phone || null,
+        phone: state.visitor_phone,
         company_name: state.visitor_company || null,
       })
       .select()
@@ -230,11 +230,11 @@ function createAnother() {
           <UFormGroup label="Company" name="visitor_company">
             <UInput v-model="state.visitor_company" placeholder="Acme Corp" />
           </UFormGroup>
-          <UFormGroup label="Email" name="visitor_email">
-            <UInput v-model="state.visitor_email" type="email" placeholder="jane@acme.com" />
+          <UFormGroup label="Phone" name="visitor_phone" required>
+            <UInput v-model="state.visitor_phone" type="tel" placeholder="+263 71 234 5678" />
           </UFormGroup>
-          <UFormGroup label="Phone" name="visitor_phone">
-            <UInput v-model="state.visitor_phone" placeholder="+1 234 567 8900" />
+          <UFormGroup label="Email (optional)" name="visitor_email">
+            <UInput v-model="state.visitor_email" type="email" placeholder="jane@acme.com" />
           </UFormGroup>
         </div>
       </div>

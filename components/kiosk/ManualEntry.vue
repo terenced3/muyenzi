@@ -27,11 +27,13 @@ function validate(): boolean {
   if (!form.name.trim()) {
     fieldErrors.name = 'Full name is required'
   }
+  if (!form.phone?.trim()) {
+    fieldErrors.phone = 'Phone number is required'
+  } else if (!/^\+?[\d\s\-().]{7,20}$/.test(form.phone)) {
+    fieldErrors.phone = 'Enter a valid phone number (e.g., +263 71 234 5678)'
+  }
   if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
     fieldErrors.email = 'Enter a valid email address'
-  }
-  if (form.phone && !/^\+?[\d\s\-().]{7,20}$/.test(form.phone)) {
-    fieldErrors.phone = 'Enter a valid phone number'
   }
   for (const field of customFields.value) {
     if (field.required && !customFieldValues[field.field_key]?.toString().trim()) {
@@ -143,7 +145,7 @@ async function submit() {
 
       <!-- Email -->
       <div>
-        <label class="text-sm font-medium text-slate-700">Email</label>
+        <label class="text-sm font-medium text-slate-700">Email (optional)</label>
         <input
           v-model="form.email"
           type="email"
@@ -157,13 +159,15 @@ async function submit() {
 
       <!-- Phone -->
       <div>
-        <label class="text-sm font-medium text-slate-700">Phone</label>
+        <label class="text-sm font-medium text-slate-700">
+          Phone number <span class="text-red-500">*</span>
+        </label>
         <input
           v-model="form.phone"
           type="tel"
           class="mt-1 w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none transition-colors"
           :class="fieldErrors.phone ? 'border-red-400 focus:border-red-500 bg-red-50' : 'border-slate-200 focus:border-slate-900'"
-          placeholder="+1 555 000 1234"
+          placeholder="+263 71 234 5678"
           autocomplete="tel"
         />
         <p v-if="fieldErrors.phone" class="text-xs text-red-600 mt-1">{{ fieldErrors.phone }}</p>
