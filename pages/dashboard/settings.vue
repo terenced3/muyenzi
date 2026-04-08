@@ -41,6 +41,14 @@ async function saveCompany() {
   await fetchProfile()
 }
 
+function onLogoUploaded() {
+  fetchProfile()
+}
+
+function onLogoDeleted() {
+  fetchProfile()
+}
+
 async function saveProfile() {
   if (!user.value) return
   savingProfile.value = true
@@ -151,6 +159,21 @@ const FIELD_TYPE_LABELS: Record<CustomFieldType, string> = {
           </UFormGroup>
           <UButton type="submit" :loading="savingCompany">Save</UButton>
         </UForm>
+      </UCard>
+
+      <!-- Company Logo -->
+      <UCard>
+        <template #header>
+          <h2 class="font-semibold text-gray-900">Company Logo</h2>
+        </template>
+        <p class="text-sm text-gray-600 mb-4">
+          This logo will be displayed on all your visitor kiosks.
+        </p>
+        <CompanyLogoUpload
+          :current-logo-url="user?.company?.logo_url"
+          @upload="onLogoUploaded"
+          @delete="onLogoDeleted"
+        />
       </UCard>
 
       <UCard>
