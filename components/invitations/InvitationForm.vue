@@ -12,13 +12,14 @@ const props = defineProps<{
 const supabase = useSupabaseClient()
 const toast = useToast()
 
-interface CreatedVisit {
+interface CreatedResult {
   access_code: string
   qr_code_data: string
   visitor_name: string
+  recurrence_count: number
 }
 
-const created = ref<CreatedVisit | null>(null)
+const created = ref<CreatedResult | null>(null)
 const loading = ref(false)
 
 const customFields = ref<VisitorCustomField[]>([])
@@ -43,6 +44,38 @@ const state = reactive({
   notes: '',
 })
 
+// ── Recurrence ────────────────────────────────────────────────
+const isRecurring = ref(false)
+const recurrenceType = ref<'daily' | 'weekly' | 'monthly'>('weekly')
+const recurrenceEndDate = ref('')
+
+const recurrenceOptions = [
+  { label: 'Daily', value: 'daily' },
+  { label: 'Weekly', value: 'weekly' },
+  { label: 'Monthly', value: 'monthly' },
+]
+
+const recurrencePreview = computed(() => {
+  if (!isRecurring.value || !recurrenceEndDate.value || !state.visit_date) return null
+  const dates = generateOccurrenceDates(state.visit_date, recurrenceType.value, recurrenceEndDate.value)
+  return dates.length
+})
+
+function generateOccurrenceDates(start: string, type: 'daily' | 'weekly' | 'monthly', end: string): string[] {
+  const dates: string[] = []
+  const endDate = new Date(end)
+  const current = new Date(start)
+  // cap at 52 occurrences to prevent abuse
+  while (current <= endDate && dates.length < 52) {
+    dates.push(current.toISOString().split('T')[0])
+    if (type === 'daily') current.setDate(current.getDate() + 1)
+    else if (type === 'weekly') current.setDate(current.getDate() + 7)
+    else current.setMonth(current.getMonth() + 1)
+  }
+  return dates
+}
+
+// ── Schema ────────────────────────────────────────────────────
 const schema = z.object({
   visitor_name: z.string().min(2, 'Visitor name is required'),
   visitor_company: z.string().optional(),
@@ -66,9 +99,11 @@ const hostOptions = computed(() => [
   ...props.hosts.map(h => ({ label: h.full_name, value: h.id })),
 ])
 
+// ── Submit ────────────────────────────────────────────────────
 async function onSubmit() {
   loading.value = true
 
+  // Upsert visitor by phone
   const { data: visitor, error: visitorError } = await supabase
     .from('visitors')
     .upsert({
@@ -104,55 +139,91 @@ async function onSubmit() {
     visitorId = newVisitor.id
   }
 
-  const accessCode = generateAccessCode()
-  const qrCodeData = JSON.stringify({ accessCode, siteId: state.site_id })
-
   const fieldValues = Object.keys(customFieldValues).length > 0 ? { ...customFieldValues } : null
 
-  const { data: visit, error } = await supabase
-    .from('visits')
-    .insert({
+  // ── Build visit records ──────────────────────────────────────
+  let visitDates: string[]
+  let groupId: string | null = null
+
+  if (isRecurring.value && recurrenceEndDate.value) {
+    visitDates = generateOccurrenceDates(state.visit_date, recurrenceType.value, recurrenceEndDate.value)
+    groupId = crypto.randomUUID()
+  } else {
+    visitDates = [state.visit_date]
+  }
+
+  const visitsToInsert = visitDates.map((date) => {
+    const accessCode = generateAccessCode()
+    return {
       company_id: props.companyId,
       site_id: state.site_id,
       visitor_id: visitorId,
       host_id: state.host_id,
       purpose: state.purpose || null,
-      visit_date: state.visit_date,
+      visit_date: date,
       visit_time: state.visit_time || null,
       notes: state.notes || null,
       access_code: accessCode,
-      qr_code_data: qrCodeData,
+      qr_code_data: JSON.stringify({ accessCode, siteId: state.site_id }),
       status: 'expected',
       custom_field_values: fieldValues,
-    })
-    .select()
-    .single()
+      recurrence_type: isRecurring.value ? recurrenceType.value : null,
+      recurrence_end_date: isRecurring.value ? recurrenceEndDate.value : null,
+      recurrence_group_id: groupId,
+    }
+  })
 
-  if (error || !visit) {
+  const { data: insertedVisits, error } = await supabase
+    .from('visits')
+    .insert(visitsToInsert)
+    .select()
+
+  if (error || !insertedVisits?.length) {
     toast.add({ title: 'Error', description: error?.message ?? 'Failed to create visit', color: 'red' })
     loading.value = false
     return
   }
 
-  await supabase.from('invitations').insert({ visit_id: visit.id })
+  // Create invitation record for the first visit
+  await supabase.from('invitations').insert({ visit_id: insertedVisits[0].id })
 
-  // Send invitation email to visitor
+  // Send email for the first occurrence only
   if (state.visitor_email) {
+    // Check if company has active document templates to include pre-sign link
+    const docs = await $fetch<{ id: string }[]>('/api/documents/templates', {
+      query: { company_id: props.companyId },
+    }).catch(() => [])
+    const hasDocuments = docs.some((d: { is_active?: boolean }) => d.is_active !== false)
+
     await $fetch('/api/email/send-invitation', {
       method: 'POST',
       body: {
         visitorEmail: state.visitor_email,
         visitorName: state.visitor_name,
         siteName: props.sites.find(s => s.id === state.site_id)?.name ?? 'Unknown',
-        companyName: (visit.visitor as any)?.company_name || 'our office',
-        accessCode: accessCode,
-        qrCodeData,
+        companyName: state.visitor_company || 'our office',
+        accessCode: insertedVisits[0].access_code,
+        qrCodeData: insertedVisits[0].qr_code_data,
+        visitId: insertedVisits[0].id,
+        hasDocuments,
+        recurrenceNote: isRecurring.value
+          ? `This visit repeats ${recurrenceType.value} until ${recurrenceEndDate.value}.`
+          : null,
       },
     }).catch(e => console.warn('Failed to send invitation email:', e))
   }
 
-  toast.add({ title: 'Invitation created', color: 'green' })
-  created.value = { access_code: accessCode, qr_code_data: qrCodeData, visitor_name: state.visitor_name }
+  const label = insertedVisits.length > 1
+    ? `${insertedVisits.length} recurring visits created`
+    : 'Invitation created'
+
+  toast.add({ title: label, color: 'green' })
+  created.value = {
+    access_code: insertedVisits[0].access_code,
+    qr_code_data: insertedVisits[0].qr_code_data,
+    visitor_name: state.visitor_name,
+    recurrence_count: insertedVisits.length,
+  }
   loading.value = false
 }
 
@@ -164,6 +235,8 @@ function copyCode() {
 
 function createAnother() {
   created.value = null
+  isRecurring.value = false
+  recurrenceEndDate.value = ''
   Object.assign(state, {
     visitor_name: '', visitor_company: '', visitor_email: '', visitor_phone: '',
     site_id: '', host_id: props.hostId, purpose: '',
@@ -181,7 +254,9 @@ function createAnother() {
       color="green"
       variant="soft"
       :title="`Invitation created for ${created.visitor_name}`"
-      description="Share the QR code or access code with your visitor."
+      :description="created.recurrence_count > 1
+        ? `${created.recurrence_count} recurring visits scheduled. QR and code below are for the first visit.`
+        : 'Share the QR code or access code with your visitor.'"
     />
 
     <div class="grid md:grid-cols-2 gap-4">
@@ -264,6 +339,34 @@ function createAnother() {
         </div>
       </div>
 
+      <!-- Recurrence -->
+      <div class="border-t pt-5">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h3 class="font-medium text-gray-700 text-sm">Repeating visit</h3>
+            <p class="text-xs text-gray-400 mt-0.5">Schedule this visit to repeat automatically</p>
+          </div>
+          <UToggle v-model="isRecurring" />
+        </div>
+
+        <div v-if="isRecurring" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+          <UFormGroup label="Repeat frequency">
+            <USelect v-model="recurrenceType" :options="recurrenceOptions" />
+          </UFormGroup>
+          <UFormGroup label="Repeat until" required>
+            <UInput v-model="recurrenceEndDate" type="date" :min="state.visit_date" />
+          </UFormGroup>
+          <div v-if="recurrencePreview !== null" class="sm:col-span-2">
+            <UAlert
+              color="indigo"
+              variant="soft"
+              icon="i-lucide-calendar-range"
+              :description="`${recurrencePreview} visit${recurrencePreview !== 1 ? 's' : ''} will be created (capped at 52).`"
+            />
+          </div>
+        </div>
+      </div>
+
       <!-- Custom fields -->
       <div v-if="customFields.length > 0">
         <h3 class="font-medium text-gray-700 mb-3 text-sm">Additional information</h3>
@@ -296,7 +399,9 @@ function createAnother() {
 
       <div class="flex gap-3 pt-2">
         <UButton variant="outline" @click="navigateTo('/dashboard/invitations')">Cancel</UButton>
-        <UButton type="submit" :loading="loading">Create Invitation</UButton>
+        <UButton type="submit" :loading="loading">
+          {{ isRecurring && recurrencePreview && recurrencePreview > 1 ? `Create ${recurrencePreview} visits` : 'Create Invitation' }}
+        </UButton>
       </div>
     </UForm>
   </UCard>

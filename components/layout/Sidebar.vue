@@ -20,7 +20,9 @@ const navItems = [
   { href: '/dashboard/visitors', label: 'Visitors', icon: 'i-lucide-users' },
   { href: '/dashboard/invitations', label: 'Invitations', icon: 'i-lucide-calendar-check' },
   { href: '/dashboard/analytics', label: 'Analytics', icon: 'i-lucide-bar-chart-3', permission: 'view_analytics' },
+  { href: '/dashboard/blacklist', label: 'Blacklist', icon: 'i-lucide-shield-ban', permission: 'manage_blacklist' },
   { href: '/dashboard/users', label: 'Team', icon: 'i-lucide-user-cog', permission: 'manage_users' },
+  { href: '/dashboard/audit-log', label: 'Audit Log', icon: 'i-lucide-scroll-text', permission: 'manage_settings' },
   { href: '/dashboard/settings', label: 'Settings', icon: 'i-lucide-settings' },
 ]
 
@@ -112,6 +114,7 @@ async function handleSignOut() {
         style="background: rgba(255,255,255,0.04)"
       >
         <UAvatar
+          :src="user?.avatar_url ?? undefined"
           :alt="initials"
           size="sm"
           class="shrink-0 bg-primary-900/30 text-primary-400 ring-1 ring-primary-500/30"

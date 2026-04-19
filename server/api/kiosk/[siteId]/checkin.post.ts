@@ -32,6 +32,18 @@ export default defineEventHandler(async (event) => {
 
     const phone = body.phone.trim()
 
+    // Check blacklist before allowing entry
+    const { data: blocked } = await supabase
+      .from('visitor_blacklist')
+      .select('reason')
+      .eq('company_id', body.company_id)
+      .eq('phone', phone)
+      .maybeSingle()
+
+    if (blocked) {
+      throw createError({ statusCode: 403, statusMessage: 'Entry not permitted. Please contact reception.' })
+    }
+
     // Check if visitor already exists by phone (primary identifier)
     const { data: existingVisitor } = await supabase
       .from('visitors')
@@ -121,6 +133,21 @@ export default defineEventHandler(async (event) => {
   }
 
   const visit = visits[0]
+
+  // Check blacklist for pre-registered visitor
+  const visitorPhone = (visit.visitor as any)?.phone
+  if (visitorPhone) {
+    const { data: blocked } = await supabase
+      .from('visitor_blacklist')
+      .select('reason')
+      .eq('company_id', visit.company_id)
+      .eq('phone', visitorPhone)
+      .maybeSingle()
+
+    if (blocked) {
+      throw createError({ statusCode: 403, statusMessage: 'Entry not permitted. Please contact reception.' })
+    }
+  }
 
   const { data: updated, error: updateError } = await supabase
     .from('visits')

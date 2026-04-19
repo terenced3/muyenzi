@@ -23,22 +23,45 @@ async function fetchSites() {
   loading.value = false
 }
 
-const deletingId = ref<string | null>(null)
+watch(user, (u) => { if (u) fetchSites() }, { immediate: true })
 
-async function deleteSite(id: string, name: string) {
-  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
-  deletingId.value = id
-  const { error } = await supabase.from('sites').delete().eq('id', id)
-  deletingId.value = null
-  if (error) {
-    toast.add({ title: 'Error', description: error.message, color: 'red' })
-    return
-  }
-  toast.add({ title: 'Site deleted', description: `${name} has been removed.`, color: 'orange' })
-  sites.value = sites.value.filter(s => s.id !== id)
+// ── Delete ─────────────────────────────────────────────────────
+const deleteTarget = ref<Site | null>(null)
+const deleting = ref(false)
+
+function promptDelete(site: Site) {
+  deleteTarget.value = site
 }
 
-watch(user, (u) => { if (u) fetchSites() }, { immediate: true })
+async function confirmDelete() {
+  if (!deleteTarget.value) return
+  deleting.value = true
+  try {
+    await $fetch(`/api/sites/${deleteTarget.value.id}`, { method: 'DELETE' })
+    toast.add({ title: `"${deleteTarget.value.name}" deleted`, color: 'orange' })
+    sites.value = sites.value.filter(s => s.id !== deleteTarget.value!.id)
+    deleteTarget.value = null
+  } catch (e: any) {
+    toast.add({ title: 'Cannot delete site', description: e?.data?.statusMessage ?? 'Unknown error', color: 'red' })
+  } finally {
+    deleting.value = false
+  }
+}
+
+// ── QR Poster ─────────────────────────────────────────────────
+const posterSite = ref<Site | null>(null)
+
+function showPoster(site: Site) {
+  posterSite.value = site
+}
+
+function printPoster() {
+  window.print()
+}
+
+const kioskUrl = computed(() =>
+  posterSite.value ? `${window.location.origin}/kiosk/${posterSite.value.id}` : '',
+)
 </script>
 
 <template>
@@ -88,8 +111,7 @@ watch(user, (u) => { if (u) fetchSites() }, { immediate: true })
               color="red"
               variant="ghost"
               size="xs"
-              :loading="deletingId === site.id"
-              @click="deleteSite(site.id, site.name)"
+              @click="promptDelete(site)"
             />
           </div>
 
@@ -105,11 +127,19 @@ watch(user, (u) => { if (u) fetchSites() }, { immediate: true })
               Open Kiosk
             </UButton>
             <UButton
+              variant="soft"
+              color="gray"
+              size="sm"
+              icon="i-lucide-qr-code"
+              @click="showPoster(site)"
+            >
+              QR Poster
+            </UButton>
+            <UButton
               v-if="canManage"
               :to="`/dashboard/sites/${site.id}`"
               variant="soft"
               size="sm"
-              class="flex-1"
             >
               Edit
             </UButton>
@@ -118,4 +148,124 @@ watch(user, (u) => { if (u) fetchSites() }, { immediate: true })
       </div>
     </div>
   </div>
+
+  <!-- ── Delete confirm modal ── -->
+  <UModal :model-value="!!deleteTarget" @update:model-value="deleteTarget = null">
+    <UCard v-if="deleteTarget">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="font-bold text-gray-900">Delete site?</h2>
+            <p class="text-xs text-gray-400 mt-0.5">This action is permanent and logged to the audit trail.</p>
+          </div>
+          <UButton variant="ghost" color="gray" icon="i-lucide-x" size="sm" @click="deleteTarget = null" />
+        </div>
+      </template>
+
+      <div class="space-y-4">
+        <div class="flex items-center gap-3 p-3 bg-red-50 rounded-xl">
+          <UIcon name="i-lucide-building-2" class="h-5 w-5 text-red-400 shrink-0" />
+          <div>
+            <p class="font-semibold text-gray-900 text-sm">{{ deleteTarget.name }}</p>
+            <p v-if="deleteTarget.address" class="text-xs text-gray-400">{{ deleteTarget.address }}</p>
+          </div>
+        </div>
+        <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 space-y-1">
+          <p class="font-semibold">Before deleting, make sure:</p>
+          <ul class="list-disc pl-4 space-y-0.5 text-xs">
+            <li>No visitors are currently checked in at this site</li>
+            <li>The kiosk device at this location has been decommissioned</li>
+          </ul>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <UButton variant="outline" @click="deleteTarget = null">Cancel</UButton>
+          <UButton color="red" icon="i-lucide-trash-2" :loading="deleting" @click="confirmDelete">
+            Delete site
+          </UButton>
+        </div>
+      </template>
+    </UCard>
+  </UModal>
+
+  <!-- ── QR Poster modal ── -->
+  <UModal
+    :model-value="!!posterSite"
+    :ui="{ width: 'max-w-lg' }"
+    @update:model-value="posterSite = null"
+  >
+    <UCard v-if="posterSite">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <h2 class="font-bold text-gray-900">Visitor QR Poster</h2>
+          <div class="flex gap-2">
+            <UButton size="sm" icon="i-lucide-printer" @click="printPoster">Print</UButton>
+            <UButton variant="ghost" color="gray" icon="i-lucide-x" size="sm" @click="posterSite = null" />
+          </div>
+        </div>
+      </template>
+
+      <!-- Printable poster content -->
+      <div id="qr-poster" class="flex flex-col items-center text-center py-6 px-4 space-y-5">
+        <!-- Company branding strip -->
+        <div class="w-full rounded-xl py-3 px-5 flex items-center justify-center gap-3"
+             style="background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%)">
+          <span class="text-white font-bold text-xl tracking-tight">muyenzi</span>
+        </div>
+
+        <div class="space-y-1">
+          <h1 class="text-2xl font-bold text-gray-900">{{ posterSite.name }}</h1>
+          <p v-if="posterSite.address" class="text-sm text-gray-500">{{ posterSite.address }}</p>
+        </div>
+
+        <p class="text-base text-gray-700 font-medium">Scan to check in as a visitor</p>
+
+        <div class="p-5 bg-white rounded-2xl shadow-lg border border-gray-100">
+          <SharedQRCodeDisplay :data="kioskUrl" :size="220" />
+        </div>
+
+        <div class="w-full p-3 bg-gray-50 rounded-xl text-center">
+          <p class="text-xs text-gray-400 font-mono break-all">{{ kioskUrl }}</p>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4 w-full pt-2">
+          <div class="text-center">
+            <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center mx-auto mb-1.5">
+              <span class="text-indigo-600 font-bold text-sm">1</span>
+            </div>
+            <p class="text-xs text-gray-600">Scan the QR code</p>
+          </div>
+          <div class="text-center">
+            <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center mx-auto mb-1.5">
+              <span class="text-indigo-600 font-bold text-sm">2</span>
+            </div>
+            <p class="text-xs text-gray-600">Enter your details</p>
+          </div>
+          <div class="text-center">
+            <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center mx-auto mb-1.5">
+              <span class="text-indigo-600 font-bold text-sm">3</span>
+            </div>
+            <p class="text-xs text-gray-600">Your host is notified</p>
+          </div>
+        </div>
+
+        <p class="text-[10px] text-gray-300 pt-2">Powered by Muyenzi Visitor Management</p>
+      </div>
+    </UCard>
+  </UModal>
 </template>
+
+<style>
+@media print {
+  body > * { display: none !important; }
+  #qr-poster {
+    display: flex !important;
+    position: fixed;
+    inset: 0;
+    background: white;
+    z-index: 9999;
+  }
+}
+</style>

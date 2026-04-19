@@ -7,17 +7,34 @@ const props = defineProps<{
     name: string
     address: string | null
     company_id: string
-    company?: { name: string; logo_url: string | null } | null
+    company?: {
+      name: string
+      logo_url: string | null
+      privacy_notice_enabled?: boolean
+      privacy_notice_text?: string | null
+    } | null
   }
 }>()
 
 type Tab = 'checkin' | 'checkout'
 type Method = 'qr' | 'code' | 'manual' | null
 
+interface DocTemplate { id: string; name: string; content: string }
+
 const tab = ref<Tab>('checkin')
 const method = ref<Method>(null)
+const privacyAccepted = ref(false)
+
+const needsPrivacy = computed(() =>
+  tab.value === 'checkin' &&
+  props.site.company?.privacy_notice_enabled &&
+  !!props.site.company?.privacy_notice_text &&
+  !privacyAccepted.value,
+)
 const result = ref<VisitWithRelations | null>(null)
 const error = ref<string | null>(null)
+const signingVisit = ref<VisitWithRelations | null>(null)
+const unsignedTemplates = ref<DocTemplate[]>([])
 
 const { isOnline, isSyncing, pendingVisitsCount } = useOfflineSync()
 
@@ -36,7 +53,31 @@ function reset() {
   method.value = null
   result.value = null
   error.value = null
+  signingVisit.value = null
+  unsignedTemplates.value = []
+  privacyAccepted.value = false
   if (idleTimer) { clearTimeout(idleTimer); idleTimer = null }
+}
+
+async function handleCheckinSuccess(visit: VisitWithRelations) {
+  // Fetch unsigned templates — skip signing on error to not block check-in
+  try {
+    const docs = await $fetch<DocTemplate[]>('/api/documents/unsigned', {
+      query: { visit_id: visit.id, company_id: props.site.company_id },
+    })
+    if (docs && docs.length > 0) {
+      signingVisit.value = visit
+      unsignedTemplates.value = docs
+      return
+    }
+  } catch { /* no documents configured — proceed normally */ }
+  result.value = visit
+}
+
+function onSigningComplete() {
+  result.value = signingVisit.value
+  signingVisit.value = null
+  unsignedTemplates.value = []
 }
 
 function setTab(t: Tab) { tab.value = t; reset() }
@@ -95,6 +136,18 @@ watch(method, (val) => { if (val) resetIdle() })
       <!-- Success screen -->
       <KioskSuccessScreen v-if="result" :visit="result" :tab="tab" @reset="reset" />
 
+      <!-- Document signing screen -->
+      <div v-else-if="signingVisit" class="bg-white rounded-2xl shadow-xl overflow-hidden">
+        <KioskDocumentSigning
+          :visit-id="signingVisit.id"
+          :visitor-id="signingVisit.visitor_id"
+          :company-id="site.company_id"
+          :templates="unsignedTemplates"
+          @completed="onSigningComplete"
+          @error="(msg: string) => { error = msg; signingVisit = null; unsignedTemplates = [] }"
+        />
+      </div>
+
       <!-- Main card -->
       <div v-else class="bg-white rounded-2xl shadow-xl overflow-hidden">
 
@@ -118,9 +171,17 @@ watch(method, (val) => { if (val) resetIdle() })
 
         <div class="p-6">
 
+          <!-- ── Privacy notice (check-in only) ── -->
+          <KioskPrivacyNotice
+            v-if="needsPrivacy"
+            :notice-text="site.company!.privacy_notice_text!"
+            :site-name="site.name"
+            @accepted="privacyAccepted = true"
+          />
+
           <!-- ── CHECK IN ── -->
           <KioskMethodPicker
-            v-if="tab === 'checkin' && !method"
+            v-else-if="tab === 'checkin' && !method"
             @select="(m: Method) => method = m"
           />
 
@@ -128,7 +189,7 @@ watch(method, (val) => { if (val) resetIdle() })
             v-else-if="tab === 'checkin' && method === 'code'"
             :site-id="site.id"
             endpoint="checkin"
-            @success="(v: VisitWithRelations) => result = v"
+            @success="handleCheckinSuccess"
             @error="(e: string) => error = e"
             @back="reset"
           />
@@ -137,7 +198,7 @@ watch(method, (val) => { if (val) resetIdle() })
             v-else-if="tab === 'checkin' && method === 'qr'"
             :site-id="site.id"
             endpoint="checkin"
-            @success="(v: VisitWithRelations) => result = v"
+            @success="handleCheckinSuccess"
             @error="(e: string) => error = e"
             @back="reset"
           />
@@ -146,7 +207,7 @@ watch(method, (val) => { if (val) resetIdle() })
             v-else-if="tab === 'checkin' && method === 'manual'"
             :site-id="site.id"
             :company-id="site.company_id"
-            @success="(v: VisitWithRelations) => result = v"
+            @success="handleCheckinSuccess"
             @error="(e: string) => error = e"
             @back="reset"
           />

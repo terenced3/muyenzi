@@ -5,7 +5,7 @@ definePageMeta({ layout: 'dashboard' })
 useHead({ title: 'Visitors – Muyenzi' })
 
 const supabase = useSupabaseClient()
-const { user } = useUser()
+const { user, can } = useUser()
 const route = useRoute()
 const router = useRouter()
 
@@ -74,6 +74,40 @@ function applyFilters() {
   fetchData()
 }
 
+// ── Blacklist ─────────────────────────────────────────────────
+const blacklistTarget = ref<{ phone: string; full_name: string } | null>(null)
+const blacklistReason = ref('')
+const blacklisting = ref(false)
+const toast = useToast()
+
+function promptBlacklist(visit: VisitWithRelations) {
+  blacklistTarget.value = { phone: visit.visitor.phone ?? '', full_name: visit.visitor.full_name }
+  blacklistReason.value = ''
+}
+
+async function confirmBlacklist() {
+  if (!blacklistTarget.value || !user.value) return
+  blacklisting.value = true
+  try {
+    await $fetch('/api/blacklist', {
+      method: 'POST',
+      body: {
+        company_id: user.value.company_id,
+        phone: blacklistTarget.value.phone,
+        full_name: blacklistTarget.value.full_name,
+        reason: blacklistReason.value || null,
+        created_by: user.value.id,
+      },
+    })
+    toast.add({ title: `${blacklistTarget.value.full_name} added to blacklist`, color: 'green' })
+    blacklistTarget.value = null
+  } catch (e: any) {
+    toast.add({ title: 'Error', description: e?.data?.statusMessage ?? 'Failed', color: 'red' })
+  } finally {
+    blacklisting.value = false
+  }
+}
+
 const updatingVisitId = ref<string | null>(null)
 
 async function updateStatus(visitId: string, status: 'cancelled' | 'no_show' | 'checked_out') {
@@ -91,6 +125,25 @@ async function updateStatus(visitId: string, status: 'cancelled' | 'no_show' | '
   updatingVisitId.value = null
 }
 
+async function exportVisitorData(visit: VisitWithRelations) {
+  try {
+    const data = await $fetch(`/api/gdpr/visitor-export`, {
+      query: { visitor_id: visit.visitor_id },
+      responseType: 'json',
+    })
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `visitor-data-${visit.visitor.full_name.replace(/\s+/g, '-').toLowerCase()}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    useToast().add({ title: 'Data exported', color: 'green' })
+  } catch (e: any) {
+    useToast().add({ title: 'Export failed', description: e?.data?.statusMessage ?? 'Error', color: 'red' })
+  }
+}
+
 function actionsFor(visit: VisitWithRelations) {
   const items = []
   if (visit.status === 'expected') {
@@ -100,6 +153,10 @@ function actionsFor(visit: VisitWithRelations) {
   if (visit.status === 'checked_in') {
     items.push({ label: 'Force check out', icon: 'i-lucide-log-out', click: () => updateStatus(visit.id, 'checked_out') })
   }
+  if (can('manage_blacklist') && visit.visitor.phone) {
+    items.push({ label: 'Add to blacklist', icon: 'i-lucide-shield-ban', click: () => promptBlacklist(visit) })
+  }
+  items.push({ label: 'Export personal data', icon: 'i-lucide-download', click: () => exportVisitorData(visit) })
   return items
 }
 
@@ -222,4 +279,42 @@ watch(user, (u) => { if (u) fetchData() }, { immediate: true })
       </UCard>
     </div>
   </div>
+
+  <!-- Blacklist confirm modal -->
+  <UModal :model-value="!!blacklistTarget" @update:model-value="blacklistTarget = null">
+    <UCard v-if="blacklistTarget">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="font-bold text-gray-900">Block this visitor?</h2>
+            <p class="text-xs text-gray-400 mt-0.5">They will be denied entry at all kiosks.</p>
+          </div>
+          <UButton variant="ghost" color="gray" icon="i-lucide-x" size="sm" @click="blacklistTarget = null" />
+        </div>
+      </template>
+
+      <div class="space-y-4">
+        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+          <UIcon name="i-lucide-user" class="h-5 w-5 text-gray-400" />
+          <div>
+            <p class="font-semibold text-gray-900 text-sm">{{ blacklistTarget.full_name }}</p>
+            <p class="text-xs text-gray-400 font-mono">{{ blacklistTarget.phone }}</p>
+          </div>
+        </div>
+
+        <UFormGroup label="Reason (optional)">
+          <UInput v-model="blacklistReason" placeholder="e.g. Trespassing, Theft, Harassment" />
+        </UFormGroup>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <UButton variant="outline" @click="blacklistTarget = null">Cancel</UButton>
+          <UButton color="red" icon="i-lucide-shield-ban" :loading="blacklisting" @click="confirmBlacklist">
+            Block visitor
+          </UButton>
+        </div>
+      </template>
+    </UCard>
+  </UModal>
 </template>

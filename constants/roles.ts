@@ -18,6 +18,7 @@ type Permission =
   | 'manage_sites'
   | 'manage_users'
   | 'manage_settings'
+  | 'manage_blacklist'
   | 'invite_visitors'
   | 'view_analytics'
   | 'check_in'
@@ -25,8 +26,8 @@ type Permission =
   | 'view_own_visits'
 
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  admin: ['manage_sites', 'manage_users', 'manage_settings', 'invite_visitors', 'view_analytics', 'check_in', 'check_out', 'view_own_visits'],
-  site_manager: ['manage_sites', 'invite_visitors', 'view_analytics', 'check_in', 'check_out', 'view_own_visits'],
+  admin: ['manage_sites', 'manage_users', 'manage_settings', 'manage_blacklist', 'invite_visitors', 'view_analytics', 'check_in', 'check_out', 'view_own_visits'],
+  site_manager: ['manage_sites', 'manage_blacklist', 'invite_visitors', 'view_analytics', 'check_in', 'check_out', 'view_own_visits'],
   receptionist: ['invite_visitors', 'check_in', 'check_out', 'view_own_visits'],
   host: ['invite_visitors', 'view_own_visits'],
 }
