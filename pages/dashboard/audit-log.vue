@@ -53,6 +53,7 @@ const ACTION_COLORS: Record<string, string> = {
   user_remove: 'red',
   gdpr_export: 'indigo',
   retention_cleanup: 'gray',
+  code_regenerated: 'orange',
 }
 
 async function fetchLogs() {

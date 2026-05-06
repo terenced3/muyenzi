@@ -108,6 +108,59 @@ async function confirmBlacklist() {
   }
 }
 
+// ── Regenerate access code ─────────────────────────────────────
+const regenTarget = ref<VisitWithRelations | null>(null)
+const regenResult = ref<{ access_code: string; qr_code_data: string; visitor_email: string | null } | null>(null)
+const regenerating = ref(false)
+const resending = ref(false)
+
+async function confirmRegen() {
+  if (!regenTarget.value) return
+  regenerating.value = true
+  try {
+    const result = await $fetch<{ access_code: string; qr_code_data: string; visitor_email: string | null }>(
+      `/api/visits/${regenTarget.value.id}/regenerate-code`,
+      { method: 'PATCH', body: { resend: false } },
+    )
+    regenResult.value = result
+    // refresh list in background so the new code shows in the table
+    fetchData()
+  } catch (e: any) {
+    useToast().add({ title: 'Error', description: e?.data?.statusMessage ?? 'Failed', color: 'red' })
+    regenTarget.value = null
+  } finally {
+    regenerating.value = false
+  }
+}
+
+async function resendAfterRegen() {
+  if (!regenTarget.value || !regenResult.value) return
+  resending.value = true
+  try {
+    await $fetch(`/api/visits/${regenTarget.value.id}/regenerate-code`, {
+      method: 'PATCH',
+      body: { resend: true },
+    })
+    useToast().add({ title: 'Invitation sent', description: `New code emailed to ${regenResult.value.visitor_email}`, color: 'green' })
+  } catch (e: any) {
+    useToast().add({ title: 'Email failed', description: e?.data?.statusMessage ?? 'Could not send email', color: 'red' })
+  } finally {
+    resending.value = false
+  }
+}
+
+function closeRegenModal() {
+  regenTarget.value = null
+  regenResult.value = null
+}
+
+function copyRegenCode() {
+  if (!regenResult.value) return
+  navigator.clipboard.writeText(regenResult.value.access_code)
+  useToast().add({ title: 'Copied!', timeout: 1500 })
+}
+
+// ─────────────────────────────────────────────────────────────
 const updatingVisitId = ref<string | null>(null)
 
 async function updateStatus(visitId: string, status: 'cancelled' | 'no_show' | 'checked_out') {
@@ -148,6 +201,9 @@ function actionsFor(visit: VisitWithRelations) {
   if (visit.status === 'expected') {
     items.push({ label: 'Mark as no-show', icon: 'i-lucide-user-x', click: () => updateStatus(visit.id, 'no_show') })
     items.push({ label: 'Cancel', icon: 'i-lucide-x-circle', click: () => updateStatus(visit.id, 'cancelled') })
+    if (can('manage_blacklist')) {
+      items.push({ label: 'Regenerate access code', icon: 'i-lucide-refresh-cw', click: () => { regenTarget.value = visit; regenResult.value = null } })
+    }
   }
   if (visit.status === 'checked_in') {
     items.push({ label: 'Force check out', icon: 'i-lucide-log-out', click: () => updateStatus(visit.id, 'checked_out') })
@@ -278,6 +334,87 @@ watch(user, (u) => { if (u) fetchData() }, { immediate: true })
       </UCard>
     </div>
   </div>
+
+  <!-- Regenerate code — confirm modal -->
+  <UModal :model-value="!!regenTarget && !regenResult" @update:model-value="closeRegenModal">
+    <UCard v-if="regenTarget && !regenResult">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="font-bold text-gray-900">Regenerate access code?</h2>
+            <p class="text-xs text-gray-400 mt-0.5">The old code will stop working at the kiosk immediately.</p>
+          </div>
+          <UButton variant="ghost" color="gray" icon="i-lucide-x" size="sm" @click="closeRegenModal" />
+        </div>
+      </template>
+
+      <div class="space-y-3">
+        <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+          <UIcon name="i-lucide-user" class="h-5 w-5 text-gray-400 shrink-0" />
+          <div>
+            <p class="font-semibold text-gray-900 text-sm">{{ regenTarget.visitor.full_name }}</p>
+            <p class="text-xs text-gray-400">{{ regenTarget.site.name }} · {{ regenTarget.visit_date }}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+          <UIcon name="i-lucide-triangle-alert" class="h-4 w-4 text-amber-500 shrink-0" />
+          <div>
+            <p class="text-xs text-amber-800">Current code <code class="font-mono font-bold">{{ regenTarget.access_code }}</code> will be invalidated.</p>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <UButton variant="outline" @click="closeRegenModal">Cancel</UButton>
+          <UButton icon="i-lucide-refresh-cw" :loading="regenerating" @click="confirmRegen">
+            Generate new code
+          </UButton>
+        </div>
+      </template>
+    </UCard>
+  </UModal>
+
+  <!-- Regenerate code — result modal -->
+  <UModal :model-value="!!regenResult" @update:model-value="closeRegenModal">
+    <UCard v-if="regenResult">
+      <template #header>
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="font-bold text-gray-900">New access code ready</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Share this with the visitor. The old code no longer works.</p>
+          </div>
+          <UButton variant="ghost" color="gray" icon="i-lucide-x" size="sm" @click="closeRegenModal" />
+        </div>
+      </template>
+
+      <div class="flex flex-col items-center gap-4 py-4">
+        <div class="text-4xl font-mono font-bold tracking-[0.25em] text-gray-900 bg-gray-100 rounded-xl px-8 py-5">
+          {{ regenResult.access_code }}
+        </div>
+        <UButton variant="soft" icon="i-lucide-copy" size="sm" @click="copyRegenCode">
+          Copy code
+        </UButton>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-between items-center gap-3">
+          <UButton
+            v-if="regenResult.visitor_email"
+            variant="soft"
+            color="indigo"
+            icon="i-lucide-mail"
+            :loading="resending"
+            @click="resendAfterRegen"
+          >
+            Send by email
+          </UButton>
+          <span v-else class="text-xs text-gray-400">No email on file — share the code manually.</span>
+          <UButton @click="closeRegenModal">Done</UButton>
+        </div>
+      </template>
+    </UCard>
+  </UModal>
 
   <!-- Blacklist confirm modal -->
   <UModal :model-value="!!blacklistTarget" @update:model-value="blacklistTarget = null">

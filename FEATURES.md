@@ -62,7 +62,8 @@
 - ✅ List upcoming (expected) invitations
 - ✅ Edit invitation
 - ✅ Cancel invitation
-- ⬜ Resend invitation email
+- ✅ Resend invitation email (bundled with regenerate-code flow)
+- ✅ Regenerate access code (admin/site_manager, expected visits only, audit logged, optional email resend)
 - ⬜ SMS invitation (critical for Zimbabwe market)
 - ⬜ WhatsApp message invitation
 - ⬜ Bulk invite (upload CSV of visitors)
