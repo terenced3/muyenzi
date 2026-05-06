@@ -91,10 +91,13 @@ function siteNamesFor(userId: string) {
 // ── Role change ───────────────────────────────────────────────
 
 async function changeRole(userId: string, role: UserRole) {
-  const { error } = await supabase.from('users').update({ role }).eq('id', userId)
-  if (error) { toast.add({ title: 'Error', description: error.message, color: 'red' }); return }
-  users.value = users.value.map(u => u.id === userId ? { ...u, role } : u)
-  toast.add({ title: 'Role updated', description: `Now a ${ROLE_LABELS[role]}`, color: 'green' })
+  try {
+    await $fetch(`/api/users/${userId}/role`, { method: 'PATCH', body: { role } })
+    users.value = users.value.map(u => u.id === userId ? { ...u, role } : u)
+    toast.add({ title: 'Role updated', description: `Now a ${ROLE_LABELS[role]}`, color: 'green' })
+  } catch (e: any) {
+    toast.add({ title: 'Error', description: e?.data?.statusMessage ?? 'Failed', color: 'red' })
+  }
 }
 
 // ── Deactivate / reactivate ────────────────────────────────────
@@ -291,7 +294,7 @@ async function sendInvite() {
                 <!-- Role -->
                 <td class="px-4 py-3">
                   <USelect
-                    v-if="u.id !== user?.id"
+                    v-if="u.id !== user?.id && user?.role === 'admin'"
                     :model-value="u.role"
                     :options="roleOptions"
                     size="sm"

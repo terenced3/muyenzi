@@ -60,7 +60,6 @@ function reset() {
 }
 
 async function handleCheckinSuccess(visit: VisitWithRelations) {
-  // Fetch unsigned templates — skip signing on error to not block check-in
   try {
     const docs = await $fetch<DocTemplate[]>('/api/documents/unsigned', {
       query: { visit_id: visit.id, company_id: props.site.company_id },
@@ -70,7 +69,10 @@ async function handleCheckinSuccess(visit: VisitWithRelations) {
       unsignedTemplates.value = docs
       return
     }
-  } catch { /* no documents configured — proceed normally */ }
+  } catch (err) {
+    // Server error fetching templates — log it but do not block check-in
+    console.error('[kiosk] Failed to fetch unsigned templates, proceeding without signing:', err)
+  }
   result.value = visit
 }
 

@@ -204,7 +204,7 @@ const rangeLabel = computed(() => {
               <p class="text-3xl font-bold text-gray-900">
                 <template v-if="loading">—</template>
                 <template v-else>
-                  {{ trends.length ? (trends.reduce((s, d) => s + d.visit_count, 0) / trends.filter(d => d.visit_count > 0).length || 0).toFixed(1) : '0' }}
+                  {{ (() => { const total = trends.reduce((s, d) => s + d.visit_count, 0); const activeDays = trends.filter(d => d.visit_count > 0).length; return activeDays ? (total / activeDays).toFixed(1) : '0' })() }}
                 </template>
               </p>
             </div>

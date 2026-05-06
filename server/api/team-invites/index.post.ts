@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import { randomBytes } from 'node:crypto'
 
 function getSupabase() {
   const config = useRuntimeConfig()
@@ -54,7 +53,9 @@ export default defineEventHandler(async (event) => {
     .eq('email', email.toLowerCase().trim())
     .is('accepted_at', null)
 
-  const token = randomBytes(32).toString('hex')
+  const tokenBytes = new Uint8Array(32)
+  crypto.getRandomValues(tokenBytes)
+  const token = Array.from(tokenBytes).map(b => b.toString(16).padStart(2, '0')).join('')
 
   const { error } = await supabase.from('team_invites').insert({
     company_id,

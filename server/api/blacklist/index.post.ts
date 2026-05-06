@@ -44,5 +44,17 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: error.message })
   }
 
+  await supabase.from('audit_logs').insert({
+    company_id,
+    user_id: created_by,
+    action: 'blacklist_add',
+    resource: 'visitor',
+    metadata: {
+      phone: phone.trim(),
+      full_name: full_name?.trim() || null,
+      reason: reason?.trim() || null,
+    },
+  })
+
   return data
 })

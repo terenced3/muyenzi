@@ -160,6 +160,15 @@ async function onSubmit() {
           <UInput v-model="state.password" type="password" placeholder="At least 8 characters" />
         </UFormGroup>
 
+        <UAlert
+          color="blue"
+          variant="soft"
+          icon="i-lucide-mail"
+          title="Email confirmation required"
+          description="After signing up you'll receive a verification email. You must click that link before you can log in."
+          class="mt-2"
+        />
+
         <UButton type="submit" block :loading="submitting" class="mt-2">
           Create account &amp; join {{ invite.company_name }}
         </UButton>

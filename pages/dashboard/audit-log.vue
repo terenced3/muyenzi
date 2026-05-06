@@ -42,11 +42,17 @@ const ACTION_COLORS: Record<string, string> = {
   invite_accept: 'green',
   visit_create: 'indigo',
   visit_update: 'blue',
+  visit_cancelled: 'red',
+  visit_no_show: 'yellow',
+  visit_force_checkout: 'blue',
+  role_change: 'yellow',
   user_role_change: 'yellow',
   site_delete: 'red',
   user_deactivate: 'orange',
   user_reactivate: 'green',
   user_remove: 'red',
+  gdpr_export: 'indigo',
+  retention_cleanup: 'gray',
 }
 
 async function fetchLogs() {

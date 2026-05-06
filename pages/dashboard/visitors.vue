@@ -112,17 +112,16 @@ const updatingVisitId = ref<string | null>(null)
 
 async function updateStatus(visitId: string, status: 'cancelled' | 'no_show' | 'checked_out') {
   updatingVisitId.value = visitId
-  const update: Record<string, string> = { status }
-  if (status === 'checked_out') update.check_out_at = new Date().toISOString()
-  const { error } = await supabase.from('visits').update(update).eq('id', visitId)
-  if (error) {
-    useToast().add({ title: 'Error', description: error.message, color: 'red' })
-  } else {
+  try {
+    await $fetch(`/api/visits/${visitId}/status`, { method: 'PATCH', body: { status } })
     const labels: Record<string, string> = { cancelled: 'Cancelled', no_show: 'Marked as no-show', checked_out: 'Checked out' }
     useToast().add({ title: labels[status], color: 'green' })
     await fetchData()
+  } catch (e: any) {
+    useToast().add({ title: 'Error', description: e?.data?.statusMessage ?? 'Failed', color: 'red' })
+  } finally {
+    updatingVisitId.value = null
   }
-  updatingVisitId.value = null
 }
 
 async function exportVisitorData(visit: VisitWithRelations) {
