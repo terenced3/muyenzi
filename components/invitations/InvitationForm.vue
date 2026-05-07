@@ -9,7 +9,6 @@ const props = defineProps<{
   hosts: { id: string; full_name: string }[]
 }>()
 
-const supabase = useSupabaseClient()
 const toast = useToast()
 
 interface CreatedResult {
@@ -102,129 +101,47 @@ const hostOptions = computed(() => [
 // ── Submit ────────────────────────────────────────────────────
 async function onSubmit() {
   loading.value = true
-
-  // Upsert visitor by phone
-  const { data: visitor, error: visitorError } = await supabase
-    .from('visitors')
-    .upsert({
-      company_id: props.companyId,
-      full_name: state.visitor_name,
-      email: state.visitor_email || null,
-      phone: state.visitor_phone,
-      company_name: state.visitor_company || null,
-    }, { onConflict: 'company_id,phone', ignoreDuplicates: false })
-    .select()
-    .single()
-
-  let visitorId = visitor?.id
-
-  if (visitorError || !visitorId) {
-    const { data: newVisitor, error } = await supabase
-      .from('visitors')
-      .insert({
-        company_id: props.companyId,
-        full_name: state.visitor_name,
-        email: state.visitor_email || null,
-        phone: state.visitor_phone,
-        company_name: state.visitor_company || null,
-      })
-      .select()
-      .single()
-
-    if (error || !newVisitor) {
-      toast.add({ title: 'Error', description: 'Failed to create visitor', color: 'red' })
-      loading.value = false
-      return
-    }
-    visitorId = newVisitor.id
-  }
-
-  const fieldValues = Object.keys(customFieldValues).length > 0 ? { ...customFieldValues } : null
-
-  // ── Build visit records ──────────────────────────────────────
-  let visitDates: string[]
-  let groupId: string | null = null
-
-  if (isRecurring.value && recurrenceEndDate.value) {
-    visitDates = generateOccurrenceDates(state.visit_date, recurrenceType.value, recurrenceEndDate.value)
-    groupId = crypto.randomUUID()
-  } else {
-    visitDates = [state.visit_date]
-  }
-
-  const visitsToInsert = visitDates.map((date) => {
-    const accessCode = generateAccessCode()
-    return {
-      company_id: props.companyId,
-      site_id: state.site_id,
-      visitor_id: visitorId,
-      host_id: state.host_id,
-      purpose: state.purpose || null,
-      visit_date: date,
-      visit_time: state.visit_time || null,
-      notes: state.notes || null,
-      access_code: accessCode,
-      qr_code_data: JSON.stringify({ accessCode, siteId: state.site_id }),
-      status: 'expected',
-      custom_field_values: fieldValues,
-      recurrence_type: isRecurring.value ? recurrenceType.value : null,
-      recurrence_end_date: isRecurring.value ? recurrenceEndDate.value : null,
-      recurrence_group_id: groupId,
-    }
-  })
-
-  const { data: insertedVisits, error } = await supabase
-    .from('visits')
-    .insert(visitsToInsert)
-    .select()
-
-  if (error || !insertedVisits?.length) {
-    toast.add({ title: 'Error', description: error?.message ?? 'Failed to create visit', color: 'red' })
-    loading.value = false
-    return
-  }
-
-  // Create invitation record for the first visit
-  await supabase.from('invitations').insert({ visit_id: insertedVisits[0].id })
-
-  // Send email for the first occurrence only
-  if (state.visitor_email) {
-    // Check if company has active document templates to include pre-sign link
-    const docs = await $fetch<{ id: string }[]>('/api/documents/templates', {
-      query: { company_id: props.companyId },
-    }).catch(() => [])
-    const hasDocuments = docs.some((d: { is_active?: boolean }) => d.is_active !== false)
-
-    await $fetch('/api/email/send-invitation', {
+  try {
+    const result = await $fetch<{
+      access_code: string
+      qr_code_data: string
+      visitor_name: string
+      recurrence_count: number
+    }>('/api/invitations', {
       method: 'POST',
       body: {
-        visitorEmail: state.visitor_email,
-        visitorName: state.visitor_name,
-        siteName: props.sites.find(s => s.id === state.site_id)?.name ?? 'Unknown',
-        companyName: state.visitor_company || 'our office',
-        accessCode: insertedVisits[0].access_code,
-        qrCodeData: insertedVisits[0].qr_code_data,
-        visitId: insertedVisits[0].id,
-        hasDocuments,
-        recurrenceNote: isRecurring.value
-          ? `This visit repeats ${recurrenceType.value} until ${recurrenceEndDate.value}.`
-          : null,
+        visitor_name: state.visitor_name,
+        visitor_phone: state.visitor_phone,
+        visitor_email: state.visitor_email || null,
+        visitor_company: state.visitor_company || null,
+        site_id: state.site_id,
+        host_id: state.host_id,
+        visit_date: state.visit_date,
+        visit_time: state.visit_time || null,
+        purpose: state.purpose || null,
+        notes: state.notes || null,
+        custom_field_values: Object.keys(customFieldValues).length > 0 ? { ...customFieldValues } : null,
+        is_recurring: isRecurring.value,
+        recurrence_type: isRecurring.value ? recurrenceType.value : null,
+        recurrence_end_date: isRecurring.value ? recurrenceEndDate.value : null,
       },
-    }).catch(e => console.warn('Failed to send invitation email:', e))
-  }
+    })
 
-  const label = insertedVisits.length > 1
-    ? `${insertedVisits.length} recurring visits created`
-    : 'Invitation created'
+    const label = result.recurrence_count > 1
+      ? `${result.recurrence_count} recurring visits created`
+      : 'Invitation created'
 
-  toast.add({ title: label, color: 'green' })
-  created.value = {
-    access_code: insertedVisits[0].access_code,
-    qr_code_data: insertedVisits[0].qr_code_data,
-    visitor_name: state.visitor_name,
-    recurrence_count: insertedVisits.length,
+    toast.add({ title: label, color: 'green' })
+    created.value = result
+  } catch (e: any) {
+    toast.add({
+      title: 'Failed to create invitation',
+      description: e?.data?.statusMessage ?? e?.message ?? 'Something went wrong',
+      color: 'red',
+    })
+  } finally {
+    loading.value = false
   }
-  loading.value = false
 }
 
 function copyCode() {
