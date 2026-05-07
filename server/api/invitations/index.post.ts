@@ -121,7 +121,7 @@ export default defineEventHandler(async (event) => {
 
   const visitsToInsert = visitDates.map(date => {
     const accessCode = makeAccessCode()
-    return {
+    const row: Record<string, any> = {
       company_id: actor.company_id,
       site_id,
       visitor_id: visitorId,
@@ -133,11 +133,17 @@ export default defineEventHandler(async (event) => {
       access_code: accessCode,
       qr_code_data: JSON.stringify({ accessCode, siteId: site_id }),
       status: 'expected',
-      custom_field_values: custom_field_values ?? null,
       recurrence_type: visitDates.length > 1 ? recurrence_type : null,
       recurrence_end_date: visitDates.length > 1 ? recurrence_end_date : null,
       recurrence_group_id: groupId,
     }
+    // Only include custom_field_values when data exists — omitting the key
+    // entirely avoids a PostgREST schema-cache error if the column hasn't
+    // been migrated yet on this Supabase instance.
+    if (custom_field_values != null) {
+      row.custom_field_values = custom_field_values
+    }
+    return row
   })
 
   const { data: insertedVisits, error: visitError } = await supabase
