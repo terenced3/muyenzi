@@ -2,7 +2,7 @@ import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 import { createClient } from '@supabase/supabase-js'
 
 export default defineEventHandler(async (event) => {
-  const authUser = await serverSupabaseUser(event)
+  const authUser = await serverSupabaseUser(event).catch(() => null)
   if (!authUser) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
 
   const config = useRuntimeConfig()

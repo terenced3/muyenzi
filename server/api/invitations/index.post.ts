@@ -23,17 +23,24 @@ function occurrenceDates(start: string, type: 'daily' | 'weekly' | 'monthly', en
 
 export default defineEventHandler(async (event) => {
   const supabase = serverSupabaseServiceRole(event)
-  const authUser = await serverSupabaseUser(event)
-  if (!authUser) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+
+  // ── Auth ────────────────────────────────────────────────────
+  const authUser = await serverSupabaseUser(event).catch(() => null)
+  if (!authUser) {
+    throw createError({ statusCode: 401, statusMessage: 'You must be logged in to create invitations' })
+  }
 
   const { data: actor } = await supabase
     .from('users')
-    .select('company_id, role')
+    .select('id, company_id, role, full_name')
     .eq('id', authUser.id)
     .single()
 
-  if (!actor) throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
+  if (!actor?.company_id) {
+    throw createError({ statusCode: 403, statusMessage: 'Your user profile was not found — please contact your admin' })
+  }
 
+  // ── Validate body ────────────────────────────────────────────
   const body = await readBody(event)
   const {
     visitor_name, visitor_phone, visitor_email, visitor_company,
@@ -44,11 +51,11 @@ export default defineEventHandler(async (event) => {
 
   if (!visitor_name?.trim()) throw createError({ statusCode: 400, statusMessage: 'Visitor name is required' })
   if (!visitor_phone?.trim()) throw createError({ statusCode: 400, statusMessage: 'Phone number is required' })
-  if (!site_id) throw createError({ statusCode: 400, statusMessage: 'Site is required' })
-  if (!host_id) throw createError({ statusCode: 400, statusMessage: 'Host is required' })
+  if (!site_id) throw createError({ statusCode: 400, statusMessage: 'Please select a site' })
+  if (!host_id) throw createError({ statusCode: 400, statusMessage: 'Please select a host' })
   if (!visit_date) throw createError({ statusCode: 400, statusMessage: 'Visit date is required' })
 
-  // Verify site belongs to this company
+  // ── Verify site belongs to this company ──────────────────────
   const { data: site } = await supabase
     .from('sites')
     .select('id, name')
@@ -56,24 +63,56 @@ export default defineEventHandler(async (event) => {
     .eq('company_id', actor.company_id)
     .single()
 
-  if (!site) throw createError({ statusCode: 404, statusMessage: 'Site not found' })
+  if (!site) {
+    throw createError({ statusCode: 404, statusMessage: 'Site not found — it may not belong to your company' })
+  }
 
-  // Upsert visitor by phone
-  const { data: visitor } = await supabase
+  // ── Find or create visitor ───────────────────────────────────
+  // Explicit find-then-create is more reliable than upsert+select on conflict
+  const { data: existingVisitor } = await supabase
     .from('visitors')
-    .upsert({
-      company_id: actor.company_id,
-      full_name: visitor_name.trim(),
-      email: visitor_email?.trim() || null,
-      phone: visitor_phone.trim(),
-      company_name: visitor_company?.trim() || null,
-    }, { onConflict: 'company_id,phone', ignoreDuplicates: false })
     .select('id')
-    .single()
+    .eq('company_id', actor.company_id)
+    .eq('phone', visitor_phone.trim())
+    .maybeSingle()
 
-  if (!visitor?.id) throw createError({ statusCode: 500, statusMessage: 'Failed to create visitor record' })
+  let visitorId: string
 
-  // Build visit rows
+  if (existingVisitor) {
+    visitorId = existingVisitor.id
+    // Keep visitor profile up to date
+    await supabase
+      .from('visitors')
+      .update({
+        full_name: visitor_name.trim(),
+        email: visitor_email?.trim() || null,
+        company_name: visitor_company?.trim() || null,
+      })
+      .eq('id', visitorId)
+  } else {
+    const { data: newVisitor, error: visitorError } = await supabase
+      .from('visitors')
+      .insert({
+        company_id: actor.company_id,
+        full_name: visitor_name.trim(),
+        email: visitor_email?.trim() || null,
+        phone: visitor_phone.trim(),
+        company_name: visitor_company?.trim() || null,
+      })
+      .select('id')
+      .single()
+
+    if (visitorError || !newVisitor) {
+      console.error('[invitations] visitor insert error:', visitorError)
+      throw createError({
+        statusCode: 500,
+        statusMessage: `Could not save visitor record: ${visitorError?.message ?? 'unknown error'}`,
+      })
+    }
+    visitorId = newVisitor.id
+  }
+
+  // ── Build visit rows ─────────────────────────────────────────
   const visitDates = is_recurring && recurrence_type && recurrence_end_date
     ? occurrenceDates(visit_date, recurrence_type, recurrence_end_date)
     : [visit_date]
@@ -85,7 +124,7 @@ export default defineEventHandler(async (event) => {
     return {
       company_id: actor.company_id,
       site_id,
-      visitor_id: visitor.id,
+      visitor_id: visitorId,
       host_id,
       purpose: purpose?.trim() || null,
       visit_date: date,
@@ -107,37 +146,46 @@ export default defineEventHandler(async (event) => {
     .select()
 
   if (visitError || !insertedVisits?.length) {
-    throw createError({ statusCode: 500, statusMessage: visitError?.message ?? 'Failed to create visit' })
+    console.error('[invitations] visit insert error:', visitError)
+    throw createError({
+      statusCode: 500,
+      statusMessage: `Could not create visit: ${visitError?.message ?? 'unknown error'}`,
+    })
   }
 
-  // Create invitation record for first visit
-  await supabase.from('invitations').insert({ visit_id: insertedVisits[0].id })
+  // ── Create invitation record ─────────────────────────────────
+  await supabase
+    .from('invitations')
+    .insert({ visit_id: insertedVisits[0].id })
 
-  // Send email if visitor has one
+  // ── Send email (fire and forget — never blocks the response) ─
   if (visitor_email?.trim()) {
-    const { data: docs } = await supabase
-      .from('document_templates')
-      .select('id, is_active')
-      .eq('company_id', actor.company_id)
+    const sendEmail = async () => {
+      const { data: docs } = await supabase
+        .from('document_templates')
+        .select('id, is_active')
+        .eq('company_id', actor.company_id)
 
-    const hasDocuments = (docs ?? []).some((d: any) => d.is_active !== false)
+      const hasDocuments = (docs ?? []).some((d: any) => d.is_active !== false)
 
-    await $fetch('/api/email/send-invitation', {
-      method: 'POST',
-      body: {
-        visitorEmail: visitor_email.trim(),
-        visitorName: visitor_name.trim(),
-        siteName: site.name,
-        companyName: visitor_company?.trim() || 'our office',
-        accessCode: insertedVisits[0].access_code,
-        qrCodeData: insertedVisits[0].qr_code_data,
-        visitId: insertedVisits[0].id,
-        hasDocuments,
-        recurrenceNote: visitDates.length > 1
-          ? `This visit repeats ${recurrence_type} until ${recurrence_end_date}.`
-          : null,
-      },
-    }).catch(e => console.warn('[invitations] Failed to send email:', e))
+      await $fetch('/api/email/send-invitation', {
+        method: 'POST',
+        body: {
+          visitorEmail: visitor_email.trim(),
+          visitorName: visitor_name.trim(),
+          siteName: site.name,
+          companyName: visitor_company?.trim() || site.name,
+          accessCode: insertedVisits[0].access_code,
+          qrCodeData: insertedVisits[0].qr_code_data,
+          visitId: insertedVisits[0].id,
+          hasDocuments,
+          recurrenceNote: visitDates.length > 1
+            ? `This visit repeats ${recurrence_type} until ${recurrence_end_date}.`
+            : null,
+        },
+      })
+    }
+    void sendEmail().catch(e => console.warn('[invitations] email send failed:', e))
   }
 
   return {
