@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { z } from 'zod'
 import type { VisitorCustomField } from '~/types/database'
 
 const props = defineProps<{
@@ -74,19 +73,6 @@ function generateOccurrenceDates(start: string, type: 'daily' | 'weekly' | 'mont
   return dates
 }
 
-// ── Schema ────────────────────────────────────────────────────
-const schema = z.object({
-  visitor_name: z.string().min(2, 'Visitor name is required'),
-  visitor_company: z.string().optional(),
-  visitor_email: z.string().email('Valid email required').optional().or(z.literal('')),
-  visitor_phone: z.string().min(7, 'Phone number is required').regex(/^\+?[\d\s\-().]{7,20}$/, 'Enter a valid phone number'),
-  site_id: z.string().min(1, 'Please select a site'),
-  host_id: z.string().min(1, 'Please select a host'),
-  purpose: z.string().optional(),
-  visit_date: z.string().min(1, 'Visit date is required'),
-  visit_time: z.string().optional(),
-  notes: z.string().optional(),
-})
 
 const siteOptions = computed(() => [
   { label: 'Select a site…', value: '' },
@@ -211,7 +197,7 @@ function createAnother() {
       <h2 class="font-bold text-gray-900">Pre-register a visitor</h2>
     </template>
 
-    <UForm :schema="schema" :state="state" class="space-y-6" @submit="onSubmit">
+    <div class="space-y-6">
       <!-- Visitor details -->
       <div>
         <h3 class="font-medium text-gray-700 mb-3 text-sm">Visitor details</h3>
@@ -316,10 +302,10 @@ function createAnother() {
 
       <div class="flex gap-3 pt-2">
         <UButton variant="outline" @click="navigateTo('/dashboard/invitations')">Cancel</UButton>
-        <UButton type="submit" :loading="loading">
+        <UButton :loading="loading" @click="onSubmit">
           {{ isRecurring && recurrencePreview && recurrencePreview > 1 ? `Create ${recurrencePreview} visits` : 'Create Invitation' }}
         </UButton>
       </div>
-    </UForm>
+    </div>
   </UCard>
 </template>
