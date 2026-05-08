@@ -1,8 +1,5 @@
-import { config } from 'dotenv'
-import { resolve } from 'path'
-
-// Load .env.local for local dev (no-op in production where env vars are injected)
-config({ path: resolve(process.cwd(), '.env.local') })
+// Nuxt reads .env.local automatically in development.
+// In production (Vercel) environment variables are injected by the platform.
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseKey = process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -22,11 +19,6 @@ export default defineNuxtConfig({
     key: supabaseKey,
     serviceKey: supabaseServiceKey,
     redirect: false,
-  },
-
-  ui: {
-    primary: 'indigo',
-    gray: 'slate',
   },
 
   colorMode: {
