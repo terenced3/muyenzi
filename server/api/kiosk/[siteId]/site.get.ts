@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
 
   const { data } = await supabase
     .from('sites')
-    .select('id, name, address, company_id, company:companies(name, logo_url, privacy_notice_enabled, privacy_notice_text)')
+    .select('id, name, address, company_id, printer_enabled, company:companies(name, logo_url)')
     .eq('id', siteId)
     .single()
 
