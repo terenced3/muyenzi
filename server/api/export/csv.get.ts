@@ -9,14 +9,23 @@ export default defineEventHandler(async (event) => {
 
   const query = getQuery(event)
   const companyId = query.company_id as string
+  const from = query.from as string | undefined
+  const to = query.to as string | undefined
+  const siteId = query.site_id as string | undefined
   if (!companyId) throw createError({ statusCode: 400, statusMessage: 'company_id required' })
 
-  const { data: visits } = await supabase
+  let q = supabase
     .from('visits')
     .select('*, visitor:visitors(*), site:sites(*), host:users(*)')
     .eq('company_id', companyId)
-    .order('created_at', { ascending: false })
+    .order('visit_date', { ascending: false })
     .limit(5000)
+
+  if (from) q = q.gte('visit_date', from)
+  if (to) q = q.lte('visit_date', to)
+  if (siteId) q = q.eq('site_id', siteId)
+
+  const { data: visits } = await q
 
   const rows = (visits ?? []).map((v: any) => [
     v.visitor?.full_name ?? '',

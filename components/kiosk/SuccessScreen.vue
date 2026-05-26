@@ -4,6 +4,7 @@ import type { VisitWithRelations } from '~/types/database'
 const props = defineProps<{
   visit: VisitWithRelations | any
   tab: 'checkin' | 'checkout'
+  companyLogoUrl?: string | null
 }>()
 
 const emit = defineEmits<{ reset: [] }>()
@@ -83,7 +84,7 @@ onUnmounted(() => {
 
     <!-- Badge Printing Option (check-in only) -->
     <div v-if="!isCheckout && !isOffline && props.visit?.site?.printer_enabled" class="mt-6 pt-4 border-t border-slate-200">
-      <KioskBadgePrinter :visit="props.visit" :printer-enabled="props.visit.site.printer_enabled" />
+      <KioskBadgePrinter :visit="props.visit" :printer-enabled="props.visit.site.printer_enabled" :logo-url="companyLogoUrl" />
     </div>
 
     <!-- Countdown ring -->

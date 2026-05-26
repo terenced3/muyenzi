@@ -136,7 +136,7 @@ watch(method, (val) => { if (val) resetIdle() })
       </div>
 
       <!-- Success screen -->
-      <KioskSuccessScreen v-if="result" :visit="result" :tab="tab" @reset="reset" />
+      <KioskSuccessScreen v-if="result" :visit="result" :tab="tab" :company-logo-url="site.company?.logo_url ?? null" @reset="reset" />
 
       <!-- Document signing screen -->
       <div v-else-if="signingVisit" class="bg-white rounded-2xl shadow-xl overflow-hidden">

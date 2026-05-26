@@ -4,6 +4,7 @@ import type { VisitWithRelations } from '~/types/database'
 const props = defineProps<{
   visit: VisitWithRelations | any
   printerEnabled?: boolean
+  logoUrl?: string | null
 }>()
 
 const badgeRef = ref<HTMLElement | null>(null)
@@ -147,7 +148,11 @@ const formatDate = (dateStr: string) => {
       class="badge"
       style="width: 80mm; padding: 3mm; background: white; border: 2px solid #1f2937; border-radius: 2mm; text-align: center; font-family: Arial, sans-serif;"
     >
-      <div style="font-size: 9px; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.3px;">
+      <!-- Company logo -->
+      <div v-if="logoUrl" style="margin-bottom: 6px; text-align: center;">
+        <img :src="logoUrl" alt="Company logo" style="max-height: 28px; max-width: 100%; object-fit: contain; display: inline-block;" />
+      </div>
+      <div v-else style="font-size: 9px; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.3px;">
         VISITOR BADGE
       </div>
 

@@ -4,7 +4,7 @@ defineProps<{
   description?: string
 }>()
 
-const { notifications, unreadCount, markAllRead } = useNotifications()
+const { notifications, unreadCount, markAllRead, markOneRead } = useNotifications()
 </script>
 
 <template>
@@ -51,17 +51,25 @@ const { notifications, unreadCount, markAllRead } = useNotifications()
               <div
                 v-for="n in notifications.slice(0, 8)"
                 :key="n.id"
-                class="px-4 py-3"
+                class="px-4 py-3 group"
                 :class="{ 'bg-primary-50/40': !n.read }"
               >
                 <div class="flex items-start gap-2">
                   <span v-if="!n.read" class="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary-500 shrink-0" />
-                  <div :class="!n.read ? '' : 'pl-3.5'">
+                  <div class="flex-1 min-w-0" :class="!n.read ? '' : 'pl-3.5'">
                     <p class="text-sm" :class="!n.read ? 'font-semibold text-gray-900' : 'text-gray-600'">
                       {{ n.message }}
                     </p>
                     <p class="text-xs text-gray-300 mt-0.5">{{ formatRelative(n.created_at) }}</p>
                   </div>
+                  <button
+                    v-if="!n.read"
+                    class="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-gray-300 hover:text-primary-500"
+                    title="Mark as read"
+                    @click.stop="markOneRead(n.id)"
+                  >
+                    <UIcon name="i-lucide-check" class="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
             </div>

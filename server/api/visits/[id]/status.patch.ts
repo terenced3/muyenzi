@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
   // Fetch visit to verify ownership and current state
   const { data: visit } = await supabase
     .from('visits')
-    .select('id, status, visitor_id, company_id, visitor:visitors(full_name, phone)')
+    .select('id, status, visitor_id, host_id, company_id, visitor:visitors(full_name, phone)')
     .eq('id', visitId)
     .eq('company_id', actor.company_id)
     .single()
@@ -66,6 +66,21 @@ export default defineEventHandler(async (event) => {
       by_name: actor.full_name,
     },
   })
+
+  // Notify the host
+  const NOTIFY_MSG: Record<string, string> = {
+    cancelled: `Visit for ${visitor?.full_name} has been cancelled`,
+    no_show: `${visitor?.full_name} did not show up for their visit`,
+    checked_out: `${visitor?.full_name} has checked out`,
+  }
+  if (visit.host_id) {
+    await supabase.from('notifications').insert({
+      user_id: visit.host_id,
+      company_id: actor.company_id,
+      type: ACTION_MAP[status],
+      message: NOTIFY_MSG[status],
+    })
+  }
 
   return { ok: true }
 })

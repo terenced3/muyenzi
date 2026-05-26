@@ -48,6 +48,11 @@ export const useNotifications = () => {
     notifications.value = notifications.value.map(n => ({ ...n, read: true }))
   }
 
+  async function markOneRead(id: string) {
+    await supabase.from('notifications').update({ read: true }).eq('id', id)
+    notifications.value = notifications.value.map(n => n.id === id ? { ...n, read: true } : n)
+  }
+
   onMounted(async () => {
     await fetchNotifications()
     subscribe()
@@ -55,5 +60,5 @@ export const useNotifications = () => {
 
   onUnmounted(() => unsubscribe())
 
-  return { notifications, unreadCount, markAllRead }
+  return { notifications, unreadCount, markAllRead, markOneRead }
 }

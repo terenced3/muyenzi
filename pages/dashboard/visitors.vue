@@ -177,6 +177,47 @@ async function updateStatus(visitId: string, status: 'cancelled' | 'no_show' | '
   }
 }
 
+function printBadge(visit: VisitWithRelations) {
+  const logoUrl = (user.value as any)?.company?.logo_url ?? ''
+  const accessCode = visit.access_code ?? ''
+  const visitorName = visit.visitor?.full_name ?? 'Visitor'
+  const hostName = visit.host?.full_name ?? ''
+  const visitDate = visit.visit_date ?? ''
+  const qrData = visit.qr_code_data ?? ''
+
+  const win = window.open('', '', 'width=400,height=600')
+  if (!win) return
+
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Badge</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:Arial,sans-serif; width:80mm; padding:4mm; background:white; }
+    @media print { body { margin:0; padding:0; width:80mm; } }
+    .badge { border:2px solid #1f2937; border-radius:4mm; padding:3mm; text-align:center; background:white; }
+    .label { font-size:7px; font-weight:bold; color:#6b7280; text-transform:uppercase; letter-spacing:0.3px; }
+    .name { font-size:15px; font-weight:bold; color:#1f2937; margin:4px 0; word-break:break-word; }
+    .detail { font-size:8px; color:#374151; margin:2px 0; }
+    .code { font-family:'Courier New',monospace; font-weight:bold; font-size:11px; letter-spacing:1px; margin:3px 0; }
+    .divider { border-top:1px solid #e5e7eb; margin:4px 0; padding-top:4px; }
+  </style></head><body>
+  <div class="badge">
+    ${logoUrl ? `<div style="margin-bottom:5px"><img src="${logoUrl}" style="max-height:24px;max-width:100%;object-fit:contain" /></div>` : '<div class="label" style="margin-bottom:5px">VISITOR BADGE</div>'}
+    <div class="name">${visitorName}</div>
+    ${qrData ? `<div style="margin:5px 0;display:flex;justify-content:center"><canvas id="qr" width="80" height="80"></canvas></div>` : ''}
+    <div class="divider">
+      ${hostName ? `<div class="detail"><span class="label">HOST: </span>${hostName}</div>` : ''}
+      ${visitDate ? `<div class="detail"><span class="label">DATE: </span>${visitDate}</div>` : ''}
+      <div class="code">${accessCode}</div>
+    </div>
+  </div>
+  <script>
+    // Simple QR using data URL from parent if available
+    window.onload = function() { window.print(); window.onafterprint = function() { window.close(); }; };
+  <\/script>
+  </body></html>`)
+  win.document.close()
+}
+
 async function exportVisitorData(visit: VisitWithRelations) {
   try {
     const data = await $fetch(`/api/gdpr/visitor-export`, {
@@ -207,6 +248,7 @@ function actionsFor(visit: VisitWithRelations) {
   }
   if (visit.status === 'checked_in') {
     items.push({ label: 'Force check out', icon: 'i-lucide-log-out', click: () => updateStatus(visit.id, 'checked_out') })
+    items.push({ label: 'Print badge', icon: 'i-lucide-printer', click: () => printBadge(visit) })
   }
   if (can('manage_blacklist') && visit.visitor.phone) {
     items.push({ label: 'Add to blacklist', icon: 'i-lucide-shield-ban', click: () => promptBlacklist(visit) })

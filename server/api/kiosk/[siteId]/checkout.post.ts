@@ -61,5 +61,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: 'Failed to check out' })
   }
 
+  // Notify the host
+  if (visit.host_id) {
+    await supabase.from('notifications').insert({
+      user_id: visit.host_id,
+      company_id: visit.company_id,
+      type: 'visit_checked_out',
+      message: `${visit.visitor?.full_name} has checked out`,
+    }).catch(() => {})
+  }
+
   return { visit: updated }
 })

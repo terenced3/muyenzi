@@ -85,8 +85,8 @@
 - ✅ Notification bell with unread badge in topbar
 - ✅ Notification dropdown (last 8, mark all read)
 - ✅ visitor_arrived notification on check-in
-- ⬜ Mark individual notification as read
-- ⬜ Notification for check-out / cancelled / no-show events
+- ✅ Mark individual notification as read
+- ✅ Notification for check-out / cancelled / no-show events
 
 ---
 
@@ -107,9 +107,9 @@
 ## Export
 - ✅ CSV export (all visits, up to 5,000 rows)
 - ✅ PDF export (all visits, up to 1,000 rows)
-- ⬜ Date range filter on export
-- ⬜ Per-site filter on export
-- ⬜ Export visitor list (not just visits)
+- ✅ Date range filter on export
+- ✅ Per-site filter on export
+- ✅ Export visitor list (not just visits)
 
 ---
 
@@ -154,9 +154,9 @@
 - ✅ Thermal badge printed from kiosk (80mm, print dialog)
 - ✅ Badge includes: visitor name, QR, host, date, access code
 - ✅ Print job logged to `print_logs` table
-- ⬜ Company logo on badge
+- ✅ Company logo on badge
 - ⬜ Custom badge template / branding
-- ⬜ Reprint badge from dashboard
+- ✅ Reprint badge from dashboard
 
 ---
 
@@ -194,3 +194,25 @@
 | 6 | Resend invitation email | Common need after visitor misses the original |
 | 7 | ✅ Delete site | No way to clean up test/old sites |
 | 8 | Company logo on badge | Branding consistency at kiosk |
+
+---
+
+## USSD Onboarding (Brainstorm)
+> Zimbabwe market — works on any phone, zero internet required.
+
+- ⬜ USSD shortcode (e.g. `*123#`) — host dials code from any phone to pre-register a visitor
+- ⬜ USSD menu flow: enter visitor name → phone number → site selection → confirm
+- ⬜ On confirmation: create visit record + access code server-side (same API as web invite)
+- ⬜ Visitor receives email invitation if email provided, or SMS with access code if phone only
+- ⬜ Host receives USSD confirmation screen with access code summary
+- ⬜ Works entirely offline from the host's perspective (USSD is network-level, not data)
+
+**Provider options (Zimbabwe):**
+- Africa's Talking — USSD + SMS + WhatsApp in one SDK, strong local presence
+- Econet/NetOne direct USSD gateway — requires local business registration
+- Twilio — no USSD, SMS only (not ideal for this feature)
+
+**Notes:**
+- USSD sessions are stateless and time-limited (~180s) — menu must be very short
+- Requires a registered USSD shortcode from a telco (Econet, NetOne, Telecel)
+- Africa's Talking can provide a shared shortcode for testing before getting a dedicated one
