@@ -81,7 +81,7 @@ export default defineEventHandler(async (event) => {
         visitId,
         hasDocuments,
       },
-    }).catch(e => console.warn('[regenerate-code] Failed to resend invitation email:', e))
+    }).catch(() => {})
   }
 
   return {

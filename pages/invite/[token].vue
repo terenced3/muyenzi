@@ -55,6 +55,15 @@ async function onSubmit() {
   authError.value = null
   submitting.value = true
 
+  // Atomically consume the token before creating the account — prevents race conditions
+  try {
+    await $fetch(`/api/team-invites/${token}`, { method: 'POST' })
+  } catch (e: any) {
+    authError.value = e?.data?.statusMessage ?? 'This invite is no longer available.'
+    submitting.value = false
+    return
+  }
+
   const { error } = await supabase.auth.signUp({
     email: invite.value.email,
     password: state.password,

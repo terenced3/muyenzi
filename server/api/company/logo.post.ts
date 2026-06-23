@@ -68,7 +68,6 @@ export default defineEventHandler(async (event) => {
     })
 
   if (uploadError) {
-    console.error('Storage upload error:', uploadError)
     throw createError({ statusCode: 500, statusMessage: 'Failed to upload file' })
   }
 
@@ -86,7 +85,6 @@ export default defineEventHandler(async (event) => {
     .eq('id', companyId)
 
   if (updateError) {
-    console.error('Database update error:', updateError)
     // Try to clean up uploaded file
     await supabase.storage.from('companies-logos').remove([`${companyId}/${filename}`])
     throw createError({ statusCode: 500, statusMessage: 'Failed to save logo URL' })

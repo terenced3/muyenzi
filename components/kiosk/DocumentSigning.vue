@@ -9,10 +9,13 @@ const props = defineProps<{
   visitId: string
   visitorId: string
   companyId: string
+  siteId: string
   templates: Template[]
 }>()
 
 const emit = defineEmits<{ (e: 'completed'): void; (e: 'error', msg: string): void }>()
+
+const { kioskKey } = useKioskKey()
 
 const currentIndex = ref(0)
 const scrolledToBottom = ref(false)
@@ -45,11 +48,13 @@ async function confirmSign() {
   try {
     await $fetch('/api/documents/sign', {
       method: 'POST',
+      headers: { 'x-kiosk-key': kioskKey.value ?? '' },
       body: {
         template_id: current.value.id,
         visit_id: props.visitId,
         visitor_id: props.visitorId,
         company_id: props.companyId,
+        site_id: props.siteId,
         signature_data: signatureData.value,
         pre_signed: false,
       },

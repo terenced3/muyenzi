@@ -12,6 +12,12 @@ const props = defineProps<{
       logo_url: string | null
       privacy_notice_enabled?: boolean
       privacy_notice_text?: string | null
+      badge_settings?: {
+        accent_color?: string
+        header_text?: string
+        show_purpose?: boolean
+        show_access_code?: boolean
+      } | null
     } | null
   }
 }>()
@@ -136,7 +142,7 @@ watch(method, (val) => { if (val) resetIdle() })
       </div>
 
       <!-- Success screen -->
-      <KioskSuccessScreen v-if="result" :visit="result" :tab="tab" :company-logo-url="site.company?.logo_url ?? null" @reset="reset" />
+      <KioskSuccessScreen v-if="result" :visit="result" :tab="tab" :company-logo-url="site.company?.logo_url ?? null" :badge-settings="site.company?.badge_settings ?? null" @reset="reset" />
 
       <!-- Document signing screen -->
       <div v-else-if="signingVisit" class="bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -144,6 +150,7 @@ watch(method, (val) => { if (val) resetIdle() })
           :visit-id="signingVisit.id"
           :visitor-id="signingVisit.visitor_id"
           :company-id="site.company_id"
+          :site-id="site.id"
           :templates="unsignedTemplates"
           @completed="onSigningComplete"
           @error="(msg: string) => { error = msg; signingVisit = null; unsignedTemplates = [] }"

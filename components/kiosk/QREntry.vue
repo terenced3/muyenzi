@@ -13,6 +13,7 @@ const emit = defineEmits<{
 }>()
 
 const endpoint = computed(() => props.endpoint ?? 'checkin')
+const { kioskKey } = useKioskKey()
 
 const videoRef = ref<HTMLVideoElement | null>(null)
 const manualCode = ref('')
@@ -87,7 +88,7 @@ async function handleQRResult(rawValue: string) {
 
   const res = await fetch(`/api/kiosk/${props.siteId}/${endpoint.value}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-kiosk-key': kioskKey.value ?? '' },
     body: JSON.stringify(body),
   })
   const data = await res.json()

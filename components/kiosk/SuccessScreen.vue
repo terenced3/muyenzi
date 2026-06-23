@@ -5,6 +5,12 @@ const props = defineProps<{
   visit: VisitWithRelations | any
   tab: 'checkin' | 'checkout'
   companyLogoUrl?: string | null
+  badgeSettings?: {
+    accent_color?: string
+    header_text?: string
+    show_purpose?: boolean
+    show_access_code?: boolean
+  } | null
 }>()
 
 const emit = defineEmits<{ reset: [] }>()
@@ -84,7 +90,7 @@ onUnmounted(() => {
 
     <!-- Badge Printing Option (check-in only) -->
     <div v-if="!isCheckout && !isOffline && props.visit?.site?.printer_enabled" class="mt-6 pt-4 border-t border-slate-200">
-      <KioskBadgePrinter :visit="props.visit" :printer-enabled="props.visit.site.printer_enabled" :logo-url="companyLogoUrl" />
+      <KioskBadgePrinter :visit="props.visit" :printer-enabled="props.visit.site.printer_enabled" :logo-url="companyLogoUrl" :badge-settings="badgeSettings" />
     </div>
 
     <!-- Countdown ring -->

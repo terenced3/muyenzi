@@ -8,6 +8,7 @@ const emit = defineEmits<{
   back: []
 }>()
 
+const { kioskKey } = useKioskKey()
 const form = reactive({ name: '', email: '', company: '', purpose: '', phone: '' })
 const loading = ref(false)
 const fieldErrors = reactive<Record<string, string>>({})
@@ -63,7 +64,7 @@ async function submit() {
   try {
     const res = await fetch(`/api/kiosk/${props.siteId}/checkin`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-kiosk-key': kioskKey.value ?? '' },
       body: JSON.stringify(payload),
     })
     const data = await res.json()

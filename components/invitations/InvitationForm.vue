@@ -15,6 +15,7 @@ interface CreatedResult {
   qr_code_data: string
   visitor_name: string
   recurrence_count: number
+  email_sent: boolean | null
 }
 
 const created = ref<CreatedResult | null>(null)
@@ -127,6 +128,15 @@ async function onSubmit() {
 
     toast.add({ title: label, color: 'green' })
     created.value = result
+
+    if (result.email_sent === false) {
+      toast.add({
+        title: 'Email could not be sent',
+        description: 'Invitation created — share the access code manually.',
+        color: 'yellow',
+        timeout: 0,
+      })
+    }
   } catch (e: any) {
     const msg = e?.data?.statusMessage ?? e?.message ?? 'Something went wrong. Please try again.'
     submitError.value = msg
@@ -168,6 +178,15 @@ function createAnother() {
       :description="created.recurrence_count > 1
         ? `${created.recurrence_count} recurring visits scheduled. QR code and access code below are for the first visit.`
         : 'Share the QR code or access code with your visitor so they can check in.'"
+    />
+
+    <UAlert
+      v-if="created.email_sent === false"
+      icon="i-lucide-mail-x"
+      color="yellow"
+      variant="soft"
+      title="Email delivery failed"
+      description="The visitor did not receive their access code by email. Share the code below with them directly."
     />
 
     <div class="grid md:grid-cols-2 gap-4">

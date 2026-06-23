@@ -1,41 +1,36 @@
-import { createClient } from '@supabase/supabase-js'
-
-function getSupabase() {
-  const config = useRuntimeConfig()
-  return createClient(
-    config.public.supabaseUrl as string,
-    config.supabaseServiceKey as string,
-  )
-}
+import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
-  const supabase = getSupabase()
-  const body = await readBody(event)
-  const { company_id, phone, full_name, reason, created_by } = body
+  const authUser = await serverSupabaseUser(event).catch(() => null)
+  if (!authUser) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
 
-  if (!company_id || !phone || !created_by) {
-    throw createError({ statusCode: 400, statusMessage: 'company_id, phone, and created_by are required' })
-  }
+  const supabase = serverSupabaseServiceRole(event)
 
-  // Verify requester is admin or site_manager
   const { data: requester } = await supabase
     .from('users')
     .select('role, company_id')
-    .eq('id', created_by)
+    .eq('id', authUser.id)
     .single()
 
-  if (!requester || requester.company_id !== company_id || !['admin', 'site_manager'].includes(requester.role)) {
+  if (!requester || !['admin', 'site_manager'].includes(requester.role)) {
     throw createError({ statusCode: 403, statusMessage: 'Only admins and site managers can manage the blacklist' })
+  }
+
+  const body = await readBody(event)
+  const { phone, full_name, reason } = body
+
+  if (!phone) {
+    throw createError({ statusCode: 400, statusMessage: 'phone is required' })
   }
 
   const { data, error } = await supabase
     .from('visitor_blacklist')
     .upsert({
-      company_id,
+      company_id: requester.company_id,
       phone: phone.trim(),
       full_name: full_name?.trim() || null,
       reason: reason?.trim() || null,
-      created_by,
+      created_by: authUser.id,
     }, { onConflict: 'company_id,phone' })
     .select()
     .single()
@@ -45,8 +40,8 @@ export default defineEventHandler(async (event) => {
   }
 
   await supabase.from('audit_logs').insert({
-    company_id,
-    user_id: created_by,
+    company_id: requester.company_id,
+    user_id: authUser.id,
     action: 'blacklist_add',
     resource: 'visitor',
     metadata: {

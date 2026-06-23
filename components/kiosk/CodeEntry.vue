@@ -13,6 +13,7 @@ const emit = defineEmits<{
   back: []
 }>()
 
+const { kioskKey } = useKioskKey()
 const code = ref('')
 const loading = ref(false)
 const errorMsg = ref<string | null>(null)
@@ -52,7 +53,7 @@ async function submit() {
 
   const res = await fetch(`/api/kiosk/${props.siteId}/${props.endpoint}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-kiosk-key': kioskKey.value ?? '' },
     body: JSON.stringify({ access_code: clean }),
   })
   const data = await res.json()

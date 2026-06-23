@@ -3,6 +3,8 @@ definePageMeta({ layout: 'auth' })
 
 const route = useRoute()
 const visitId = route.params.visitId as string
+const signToken = (route.query.st as string) ?? ''
+const signExp = (route.query.exp as string) ?? ''
 
 interface PresignInfo {
   visit_id: string
@@ -16,7 +18,7 @@ interface PresignInfo {
 }
 
 const { data: info, error, pending } = await useFetch<PresignInfo>('/api/documents/presign-info', {
-  query: { visit_id: visitId },
+  query: { visit_id: visitId, st: signToken, exp: signExp },
 })
 
 const currentIndex = ref(0)
@@ -60,6 +62,8 @@ async function confirmSign() {
         visitor_id: info.value.visitor_id,
         company_id: info.value.company_id,
         signature_data: signatureData.value,
+        sign_token: signToken,
+        sign_exp: signExp,
         pre_signed: true,
       },
     })

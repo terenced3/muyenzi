@@ -296,6 +296,37 @@ async function onDragEnd() {
   ))
 }
 
+// ── Badge Branding ────────────────────────────────────────────
+
+const badgeSettings = reactive({
+  accent_color: '#1f2937',
+  header_text: 'VISITOR',
+  show_purpose: false,
+  show_access_code: true,
+})
+const savingBadge = ref(false)
+
+watch(user, (u) => {
+  if (u) {
+    const s = (u.company as any)?.badge_settings ?? {}
+    if (s.accent_color) badgeSettings.accent_color = s.accent_color
+    if (s.header_text !== undefined) badgeSettings.header_text = s.header_text
+    if (s.show_purpose !== undefined) badgeSettings.show_purpose = s.show_purpose
+    if (s.show_access_code !== undefined) badgeSettings.show_access_code = s.show_access_code
+  }
+}, { immediate: true })
+
+async function saveBadgeSettings() {
+  if (!user.value) return
+  savingBadge.value = true
+  await supabase.from('companies').update({ badge_settings: { ...badgeSettings } }).eq('id', user.value.company_id)
+  savingBadge.value = false
+  toast.add({ title: 'Badge settings saved', color: 'green' })
+  await fetchProfile()
+}
+
+const badgePreviewDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+
 // ── Data Retention ────────────────────────────────────────────
 
 const RETENTION_OPTIONS = [
@@ -463,6 +494,87 @@ async function deleteTemplate(id: string) {
           @upload="fetchProfile"
           @delete="fetchProfile"
         />
+      </UCard>
+
+      <!-- ── Badge Branding ── -->
+      <UCard>
+        <template #header>
+          <h2 class="font-semibold text-gray-900">Badge Branding</h2>
+          <p class="text-xs text-gray-400 mt-0.5">Customise the visitor badge printed at kiosk check-in.</p>
+        </template>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+          <!-- Controls -->
+          <div class="space-y-4">
+            <UFormGroup label="Accent colour">
+              <div class="flex items-center gap-3">
+                <input
+                  v-model="badgeSettings.accent_color"
+                  type="color"
+                  class="h-9 w-12 rounded border border-gray-200 cursor-pointer p-0.5"
+                />
+                <UInput v-model="badgeSettings.accent_color" class="flex-1 font-mono" maxlength="7" placeholder="#1f2937" />
+              </div>
+            </UFormGroup>
+
+            <UFormGroup label="Header text" hint="Shown at the top of the badge, e.g. VISITOR · CONTRACTOR · GUEST">
+              <UInput v-model="badgeSettings.header_text" placeholder="VISITOR" />
+            </UFormGroup>
+
+            <label class="flex items-center justify-between py-2 cursor-pointer border-t border-gray-100">
+              <div>
+                <p class="text-sm font-medium text-gray-900">Show visit purpose</p>
+                <p class="text-xs text-gray-400">Print the purpose of visit on the badge</p>
+              </div>
+              <UToggle v-model="badgeSettings.show_purpose" />
+            </label>
+
+            <label class="flex items-center justify-between py-2 cursor-pointer border-t border-gray-100">
+              <div>
+                <p class="text-sm font-medium text-gray-900">Show access code</p>
+                <p class="text-xs text-gray-400">Print the alphanumeric access code on the badge</p>
+              </div>
+              <UToggle v-model="badgeSettings.show_access_code" />
+            </label>
+
+            <UButton :loading="savingBadge" @click="saveBadgeSettings">Save</UButton>
+          </div>
+
+          <!-- Live preview -->
+          <div class="flex flex-col items-center justify-start pt-1">
+            <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Preview</p>
+            <div
+              :style="`width: 190px; padding: 10px; background: white; border: 2px solid ${badgeSettings.accent_color}; border-radius: 6px; text-align: center; font-family: Arial, sans-serif; box-shadow: 0 1px 4px rgba(0,0,0,0.08);`"
+            >
+              <!-- Logo or header text -->
+              <div v-if="user?.company?.logo_url" style="margin-bottom: 6px;">
+                <img :src="user.company.logo_url" alt="Logo" style="max-height: 22px; max-width: 100%; object-fit: contain; display: inline-block;" />
+              </div>
+              <div v-else :style="`font-size: 8px; color: ${badgeSettings.accent_color}; margin-bottom: 6px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;`">
+                {{ badgeSettings.header_text || 'VISITOR' }}
+              </div>
+
+              <div style="font-size: 13px; font-weight: bold; color: #1f2937; margin-bottom: 5px;">John Smith</div>
+
+              <!-- QR placeholder -->
+              <div style="width: 60px; height: 60px; background: #f1f5f9; border-radius: 3px; margin: 0 auto 5px; display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 7px; color: #94a3b8; font-weight: bold;">QR CODE</span>
+              </div>
+
+              <!-- Details -->
+              <div :style="`font-size: 7px; color: #374151; border-top: 1px solid ${badgeSettings.accent_color}33; padding-top: 4px;`">
+                <div style="margin: 2px 0;"><span style="font-weight: bold; font-size: 6px;">HOST:</span> Jane Doe</div>
+                <div style="margin: 2px 0;"><span style="font-weight: bold; font-size: 6px;">DATE:</span> {{ badgePreviewDate }}</div>
+                <div v-if="badgeSettings.show_purpose" style="margin: 2px 0;"><span style="font-weight: bold; font-size: 6px;">PURPOSE:</span> Business meeting</div>
+                <div v-if="badgeSettings.show_access_code" style="margin: 3px 0; padding-top: 2px;">
+                  <span style="font-weight: bold; font-size: 6px;">CODE:</span>
+                  <div style="font-family: 'Courier New', monospace; font-weight: bold; font-size: 9px; letter-spacing: 1px; margin-top: 1px;">AB3XYZ</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </UCard>
 
       <!-- ── Timezone ── -->

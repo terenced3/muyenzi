@@ -7,7 +7,8 @@ export default defineNuxtRouteMiddleware(async (to) => {
     to.path.startsWith('/kiosk/') ||
     to.path.startsWith('/auth/') ||
     to.path.startsWith('/invite/') ||
-    to.path.startsWith('/sign/')
+    to.path.startsWith('/sign/') ||
+    to.path.startsWith('/checkin/')
 
   if (!isPublic && !supabaseUser.value) {
     return navigateTo(`/login?redirect=${encodeURIComponent(to.fullPath)}`)

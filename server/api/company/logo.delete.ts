@@ -36,7 +36,6 @@ export default defineEventHandler(async (event) => {
     .eq('id', companyId)
 
   if (error) {
-    console.error('Database update error:', error)
     throw createError({ statusCode: 500, statusMessage: 'Failed to remove logo' })
   }
 

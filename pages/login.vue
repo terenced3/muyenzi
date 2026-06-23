@@ -6,7 +6,8 @@ useHead({ title: 'Sign In – Muyenzi' })
 
 const supabase = useSupabaseClient()
 const route = useRoute()
-const redirect = (route.query.redirect as string) || '/dashboard'
+const rawRedirect = (route.query.redirect as string) || '/dashboard'
+const redirect = (rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')) ? rawRedirect : '/dashboard'
 
 const state = reactive({ email: '', password: '' })
 const error = ref<string | null>(null)

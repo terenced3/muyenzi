@@ -1,43 +1,31 @@
-import { createClient } from '@supabase/supabase-js'
-
-function getSupabase() {
-  const config = useRuntimeConfig()
-  return createClient(
-    config.public.supabaseUrl as string,
-    config.supabaseServiceKey as string,
-  )
-}
+import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
-  const supabase = getSupabase()
-  const id = getRouterParam(event, 'id')!
-  const query = getQuery(event)
-  const requesterId = query.requested_by as string
+  const authUser = await serverSupabaseUser(event).catch(() => null)
+  if (!authUser) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
 
-  if (!requesterId) {
-    throw createError({ statusCode: 400, statusMessage: 'requested_by is required' })
+  const supabase = serverSupabaseServiceRole(event)
+  const id = getRouterParam(event, 'id')!
+
+  const { data: requester } = await supabase
+    .from('users')
+    .select('role, company_id, full_name')
+    .eq('id', authUser.id)
+    .single()
+
+  if (!requester || !['admin', 'site_manager'].includes(requester.role)) {
+    throw createError({ statusCode: 403, statusMessage: 'Only admins and site managers can manage the blacklist' })
   }
 
-  // Fetch the blacklist entry to get its company_id and details for audit
   const { data: entry } = await supabase
     .from('visitor_blacklist')
     .select('company_id, phone, full_name')
     .eq('id', id)
+    .eq('company_id', requester.company_id)
     .single()
 
   if (!entry) {
     throw createError({ statusCode: 404, statusMessage: 'Blacklist entry not found' })
-  }
-
-  // Verify requester is admin or site_manager of that company
-  const { data: requester } = await supabase
-    .from('users')
-    .select('role, company_id, full_name')
-    .eq('id', requesterId)
-    .single()
-
-  if (!requester || requester.company_id !== entry.company_id || !['admin', 'site_manager'].includes(requester.role)) {
-    throw createError({ statusCode: 403, statusMessage: 'Only admins and site managers can manage the blacklist' })
   }
 
   const { error } = await supabase.from('visitor_blacklist').delete().eq('id', id)
@@ -47,8 +35,8 @@ export default defineEventHandler(async (event) => {
   }
 
   await supabase.from('audit_logs').insert({
-    company_id: entry.company_id,
-    user_id: requesterId,
+    company_id: requester.company_id,
+    user_id: authUser.id,
     action: 'blacklist_remove',
     resource: 'visitor',
     metadata: {

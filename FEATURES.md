@@ -31,7 +31,7 @@
 - ✅ Recurring / repeating visits (daily/weekly/monthly, capped at 52, migration 0008)
 - ✅ Visitor blacklist / watchlist (migration 0008, /dashboard/blacklist, kiosk enforced)
 - ✅ NDA / document signing at kiosk (pre-sign via email link + kiosk signing, admin-managed templates)
-- ⬜ Visitor self check-in via mobile link
+- ✅ Visitor self check-in via mobile link
 
 ---
 
@@ -155,7 +155,7 @@
 - ✅ Badge includes: visitor name, QR, host, date, access code
 - ✅ Print job logged to `print_logs` table
 - ✅ Company logo on badge
-- ⬜ Custom badge template / branding
+- ✅ Custom badge template / branding
 - ✅ Reprint badge from dashboard
 
 ---

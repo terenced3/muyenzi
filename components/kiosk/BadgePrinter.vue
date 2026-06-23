@@ -5,116 +5,71 @@ const props = defineProps<{
   visit: VisitWithRelations | any
   printerEnabled?: boolean
   logoUrl?: string | null
+  badgeSettings?: {
+    accent_color?: string
+    header_text?: string
+    show_purpose?: boolean
+    show_access_code?: boolean
+  } | null
 }>()
 
+const { kioskKey } = useKioskKey()
 const badgeRef = ref<HTMLElement | null>(null)
+
+const accentColor = computed(() => props.badgeSettings?.accent_color || '#1f2937')
+const headerText = computed(() => props.badgeSettings?.header_text?.trim() || 'VISITOR')
+const showPurpose = computed(() => props.badgeSettings?.show_purpose === true)
+const showAccessCode = computed(() => props.badgeSettings?.show_access_code !== false)
 
 async function printBadge() {
   if (!badgeRef.value) return
 
-  // Log the print job to the server
   try {
     await $fetch('/api/kiosk/print-badge', {
       method: 'POST',
-      body: {
-        site_id: props.visit.site_id,
-        visit_id: props.visit.id,
-      },
-    }).catch(() => {
-      // Silently fail server logging - don't block printing
-      console.warn('Failed to log print job')
-    })
+      headers: { 'x-kiosk-key': kioskKey.value ?? '' },
+      body: { site_id: props.visit.site_id, visit_id: props.visit.id },
+    }).catch(() => console.warn('Failed to log print job'))
   } catch (e) {
     console.warn('Print logging error:', e)
   }
 
-  // Open print dialog
   const printWindow = window.open('', '', 'width=400,height=600')
   if (!printWindow) return
 
   const badgeHTML = badgeRef.value.innerHTML
+  const color = accentColor.value
+
   printWindow.document.write(`
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Visitor Badge</title>
         <style>
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          body {
-            font-family: Arial, sans-serif;
-            width: 80mm;
-            padding: 4mm;
-            background: white;
-          }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; width: 80mm; padding: 4mm; background: white; }
           @media print {
             body { margin: 0; padding: 0; width: 80mm; }
             .badge { break-inside: avoid; }
           }
           .badge {
-            border: 2px solid #1f2937;
+            border: 2px solid ${color};
             border-radius: 8px;
             padding: 12px;
             text-align: center;
             background: white;
             width: 100%;
           }
-          .badge-header {
-            font-size: 10px;
-            color: #6b7280;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            font-weight: bold;
-            letter-spacing: 0.5px;
-          }
-          .visitor-name {
-            font-size: 16px;
-            font-weight: bold;
-            color: #1f2937;
-            margin-bottom: 6px;
-            word-break: break-word;
-            line-height: 1.3;
-          }
-          .qr-container {
-            margin: 8px 0;
-            text-align: center;
-          }
-          .qr-container img {
-            width: 100%;
-            max-width: 120px;
-            height: auto;
-          }
-          .badge-details {
-            font-size: 9px;
-            color: #374151;
-            margin-top: 8px;
-            text-align: center;
-            border-top: 1px solid #e5e7eb;
-            padding-top: 6px;
-          }
-          .detail-row {
-            margin: 3px 0;
-            line-height: 1.4;
-          }
-          .label {
-            font-weight: bold;
-            font-size: 8px;
-          }
-          .value {
-            font-size: 9px;
-          }
-          .access-code {
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            font-size: 11px;
-            letter-spacing: 1px;
-            margin: 4px 0;
-          }
+          .badge-header { font-size: 10px; color: ${color}; margin-bottom: 8px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; }
+          .visitor-name { font-size: 16px; font-weight: bold; color: #1f2937; margin-bottom: 6px; word-break: break-word; line-height: 1.3; }
+          .qr-container { margin: 8px 0; text-align: center; }
+          .qr-container img { width: 100%; max-width: 120px; height: auto; }
+          .badge-details { font-size: 9px; color: #374151; margin-top: 8px; text-align: center; border-top: 1px solid ${color}33; padding-top: 6px; }
+          .detail-row { margin: 3px 0; line-height: 1.4; }
+          .label { font-weight: bold; font-size: 8px; }
+          .value { font-size: 9px; }
+          .access-code { font-family: 'Courier New', monospace; font-weight: bold; font-size: 11px; letter-spacing: 1px; margin: 4px 0; }
         </style>
       </head>
       <body>
@@ -132,8 +87,7 @@ async function printBadge() {
 const formatDate = (dateStr: string) => {
   if (!dateStr) return ''
   try {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   } catch {
     return dateStr
   }
@@ -142,18 +96,18 @@ const formatDate = (dateStr: string) => {
 
 <template>
   <div>
-    <!-- Badge Template (for printing) -->
+    <!-- Badge template captured for printing -->
     <div
       ref="badgeRef"
       class="badge"
-      style="width: 80mm; padding: 3mm; background: white; border: 2px solid #1f2937; border-radius: 2mm; text-align: center; font-family: Arial, sans-serif;"
+      :style="`width: 80mm; padding: 3mm; background: white; border: 2px solid ${accentColor}; border-radius: 2mm; text-align: center; font-family: Arial, sans-serif;`"
     >
-      <!-- Company logo -->
+      <!-- Logo or header text -->
       <div v-if="logoUrl" style="margin-bottom: 6px; text-align: center;">
         <img :src="logoUrl" alt="Company logo" style="max-height: 28px; max-width: 100%; object-fit: contain; display: inline-block;" />
       </div>
-      <div v-else style="font-size: 9px; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.3px;">
-        VISITOR BADGE
+      <div v-else :style="`font-size: 9px; color: ${accentColor}; margin-bottom: 6px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;`">
+        {{ headerText }}
       </div>
 
       <div style="font-size: 15px; font-weight: bold; color: #1f2937; margin-bottom: 6px; word-break: break-word;">
@@ -168,7 +122,7 @@ const formatDate = (dateStr: string) => {
       </div>
 
       <!-- Details -->
-      <div style="font-size: 8px; color: #374151; margin-top: 6px; border-top: 1px solid #e5e7eb; padding-top: 4px;">
+      <div :style="`font-size: 8px; color: #374151; margin-top: 6px; border-top: 1px solid ${accentColor}33; padding-top: 4px;`">
         <div style="margin: 2px 0;">
           <span style="font-weight: bold; font-size: 7px;">HOST:</span>
           <span style="font-size: 8px;">{{ visit.host?.full_name || 'N/A' }}</span>
@@ -179,7 +133,12 @@ const formatDate = (dateStr: string) => {
           <span style="font-size: 8px;">{{ formatDate(visit.visit_date || visit.created_at) }}</span>
         </div>
 
-        <div style="margin: 3px 0; padding: 2px 0;">
+        <div v-if="showPurpose && visit.purpose" style="margin: 2px 0;">
+          <span style="font-weight: bold; font-size: 7px;">PURPOSE:</span>
+          <span style="font-size: 8px;">{{ visit.purpose }}</span>
+        </div>
+
+        <div v-if="showAccessCode" style="margin: 3px 0; padding: 2px 0;">
           <span style="font-weight: bold; font-size: 7px;">CODE:</span>
           <div style="font-family: 'Courier New', monospace; font-weight: bold; font-size: 10px; letter-spacing: 1px; margin-top: 1px;">
             {{ visit.access_code }}
@@ -190,8 +149,9 @@ const formatDate = (dateStr: string) => {
 
     <!-- Print Button -->
     <button
+      class="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 text-white rounded-lg font-semibold transition-colors"
+      :style="`background-color: ${accentColor};`"
       @click="printBadge"
-      class="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800 transition-colors"
     >
       <UIcon name="i-lucide-printer" class="h-4 w-4" />
       Print Badge

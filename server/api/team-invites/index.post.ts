@@ -79,7 +79,7 @@ export default defineEventHandler(async (event) => {
       role,
       token,
     },
-  }).catch(e => console.warn('Failed to send invite email:', e))
+  }).catch(() => {})
 
   return { ok: true }
 })

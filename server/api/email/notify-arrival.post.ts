@@ -62,7 +62,6 @@ export default defineEventHandler(async (event) => {
 
     return { sent: true, messageId: result.id }
   } catch (error) {
-    console.error('Failed to send arrival email:', error)
     return { sent: false, error: String(error) }
   }
 })

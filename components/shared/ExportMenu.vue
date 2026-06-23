@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const props = defineProps<{
-  companyId: string
+  companyId?: string
   siteId?: string
   from?: string
   to?: string
@@ -11,7 +11,7 @@ const localFrom = ref(props.from ?? '')
 const localTo = ref(props.to ?? '')
 
 function buildParams(extra: Record<string, string> = {}) {
-  const p = new URLSearchParams({ company_id: props.companyId })
+  const p = new URLSearchParams()
   const f = localFrom.value || props.from
   const t = localTo.value || props.to
   const s = props.siteId

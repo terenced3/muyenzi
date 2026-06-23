@@ -66,11 +66,9 @@ async function addEntry() {
     await $fetch('/api/blacklist', {
       method: 'POST',
       body: {
-        company_id: user.value.company_id,
         phone: state.phone,
         full_name: state.full_name || null,
         reason: state.reason || null,
-        created_by: user.value.id,
       },
     })
     toast.add({ title: 'Added to blacklist', color: 'green' })
@@ -87,7 +85,7 @@ async function removeEntry(id: string) {
   if (!user.value) return
   removingId.value = id
   try {
-    await $fetch(`/api/blacklist/${id}?requested_by=${user.value.id}`, { method: 'DELETE' })
+    await $fetch(`/api/blacklist/${id}`, { method: 'DELETE' })
     toast.add({ title: 'Removed from blacklist', color: 'green' })
     entries.value = entries.value.filter(e => e.id !== id)
   } catch (e: any) {

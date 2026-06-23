@@ -103,7 +103,6 @@ export default defineEventHandler(async (event) => {
       .single()
 
     if (visitorError || !newVisitor) {
-      console.error('[invitations] visitor insert error:', visitorError)
       throw createError({
         statusCode: 500,
         statusMessage: `Could not save visitor record: ${visitorError?.message ?? 'unknown error'}`,
@@ -152,7 +151,6 @@ export default defineEventHandler(async (event) => {
     .select()
 
   if (visitError || !insertedVisits?.length) {
-    console.error('[invitations] visit insert error:', visitError)
     throw createError({
       statusCode: 500,
       statusMessage: `Could not create visit: ${visitError?.message ?? 'unknown error'}`,
@@ -164,9 +162,11 @@ export default defineEventHandler(async (event) => {
     .from('invitations')
     .insert({ visit_id: insertedVisits[0].id })
 
-  // ── Send email (fire and forget — never blocks the response) ─
+  // ── Send email ───────────────────────────────────────────────
+  let emailSent: boolean | null = null
+
   if (visitor_email?.trim()) {
-    const sendEmail = async () => {
+    try {
       const { data: docs } = await supabase
         .from('document_templates')
         .select('id, is_active')
@@ -174,7 +174,7 @@ export default defineEventHandler(async (event) => {
 
       const hasDocuments = (docs ?? []).some((d: any) => d.is_active !== false)
 
-      await $fetch('/api/email/send-invitation', {
+      const emailResult = await $fetch<{ sent?: boolean }>('/api/email/send-invitation', {
         method: 'POST',
         body: {
           visitorEmail: visitor_email.trim(),
@@ -184,14 +184,33 @@ export default defineEventHandler(async (event) => {
           accessCode: insertedVisits[0].access_code,
           qrCodeData: insertedVisits[0].qr_code_data,
           visitId: insertedVisits[0].id,
+          visitDate: insertedVisits[0].visit_date,
           hasDocuments,
           recurrenceNote: visitDates.length > 1
             ? `This visit repeats ${recurrence_type} until ${recurrence_end_date}.`
             : null,
         },
       })
+
+      emailSent = emailResult?.sent === true
+    } catch {
+      emailSent = false
     }
-    void sendEmail().catch(e => console.warn('[invitations] email send failed:', e))
+
+    if (emailSent === false) {
+      await supabase.from('audit_logs').insert({
+        company_id: actor.company_id,
+        user_id: actor.id,
+        action: 'email_failed',
+        resource: 'invitation',
+        metadata: {
+          visit_id: insertedVisits[0].id,
+          visitor_name: visitor_name.trim(),
+          visitor_email: visitor_email.trim(),
+          access_code: insertedVisits[0].access_code,
+        },
+      })
+    }
   }
 
   return {
@@ -199,5 +218,6 @@ export default defineEventHandler(async (event) => {
     qr_code_data: insertedVisits[0].qr_code_data,
     visitor_name: visitor_name.trim(),
     recurrence_count: insertedVisits.length,
+    email_sent: emailSent,
   }
 })

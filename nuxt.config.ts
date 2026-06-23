@@ -28,6 +28,8 @@ export default defineNuxtConfig({
   runtimeConfig: {
     supabaseServiceKey,
     resendApiKey: process.env.RESEND_API_KEY,
+    appSecret: process.env.APP_SECRET || '',
+    documentSigningSecret: process.env.DOCUMENT_SIGNING_SECRET || '',
     public: {
       supabaseUrl,
     },

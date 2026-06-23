@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { validateKioskToken } from '~/server/utils/hmac'
 
 function getSupabase() {
   const config = useRuntimeConfig()
@@ -13,8 +14,15 @@ function normalizeCode(code: string): string {
 }
 
 export default defineEventHandler(async (event) => {
-  const supabase = getSupabase()
+  const config = useRuntimeConfig()
   const siteId = getRouterParam(event, 'siteId')!
+  const kioskKey = getHeader(event, 'x-kiosk-key') ?? ''
+
+  if (!config.appSecret || !await validateKioskToken(siteId, kioskKey, config.appSecret)) {
+    throw createError({ statusCode: 401, statusMessage: 'Invalid or missing kiosk key' })
+  }
+
+  const supabase = getSupabase()
   const body = await readBody(event)
   const { access_code, qr_data } = body
 
@@ -134,6 +142,13 @@ export default defineEventHandler(async (event) => {
 
   const visit = visits[0]
 
+  // Reject codes for visits more than 1 day in the past (yesterday is the earliest valid date).
+  const todayStr = new Date().toISOString().split('T')[0]
+  const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+  if (visit.visit_date !== todayStr && visit.visit_date !== yesterdayStr) {
+    throw createError({ statusCode: 410, statusMessage: 'This access code is only valid on the day of your visit' })
+  }
+
   // Check blacklist for pre-registered visitor
   const visitorPhone = (visit.visitor as any)?.phone
   if (visitorPhone) {
@@ -160,30 +175,33 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: 'Failed to check in' })
   }
 
-  // Notify host
-  if (visit.host_id) {
-    const host = visit.host as any
-    await supabase.from('notifications').insert({
-      user_id: visit.host_id,
-      company_id: visit.company_id,
-      type: 'visitor_arrived',
-      message: `${visit.visitor.full_name} has arrived at ${visit.site.name}`,
-    })
+  // Notify host — non-fatal: checkin is already committed, must not block the response
+  try {
+    if (visit.host_id) {
+      const host = visit.host as any
+      await supabase.from('notifications').insert({
+        user_id: visit.host_id,
+        company_id: visit.company_id,
+        type: 'visitor_arrived',
+        message: `${(visit.visitor as any).full_name} has arrived at ${(visit.site as any).name}`,
+      })
 
-    // Send email to host if email is available
-    if (host?.email) {
-      const checkInTime = updated.check_in_at || new Date().toISOString()
-      await $fetch('/api/email/notify-arrival', {
-        method: 'POST',
-        body: {
-          hostEmail: host.email,
-          hostName: host.full_name,
-          visitorName: updated.visitor.full_name,
-          siteName: updated.site.name,
-          checkInTime,
-        },
-      }).catch(e => console.warn('Failed to send arrival email:', e))
+      if (host?.email) {
+        const checkInTime = updated.check_in_at || new Date().toISOString()
+        await $fetch('/api/email/notify-arrival', {
+          method: 'POST',
+          body: {
+            hostEmail: host.email,
+            hostName: host.full_name,
+            visitorName: (updated.visitor as any).full_name,
+            siteName: (updated.site as any).name,
+            checkInTime,
+          },
+        }).catch(() => {})
+      }
     }
+  } catch {
+    // Notification failure must not prevent a successful checkin response
   }
 
   return { visit: updated }

@@ -12,7 +12,9 @@
       "Bash(node -e \":*)",
       "WebFetch(domain:muyenzi.vercel.app)",
       "Bash(curl -s \"https://muyenzi.vercel.app/kiosk/5484a870-c181-4075-939d-4f8f4529c169\")",
-      "Bash(grep -r \"generateAccessCode\\\\|formatDateTime\\\\|formatDuration\" /Users/terencedube/muyenzi --include=*.ts --include=*.js --include=*.vue)"
+      "Bash(grep -r \"generateAccessCode\\\\|formatDateTime\\\\|formatDuration\" /Users/terencedube/muyenzi --include=*.ts --include=*.js --include=*.vue)",
+      "Skill(update-config)",
+      "Skill(update-config:*)"
     ]
   }
 }

@@ -1,23 +1,27 @@
-import { createClient } from '@supabase/supabase-js'
+import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 
 export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig()
-  const supabase = createClient(
-    config.public.supabaseUrl as string,
-    config.supabaseServiceKey as string,
-  )
+  const authUser = await serverSupabaseUser(event).catch(() => null)
+  if (!authUser) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+
+  const supabase = serverSupabaseServiceRole(event)
+  const { data: profile } = await supabase
+    .from('users')
+    .select('company_id')
+    .eq('id', authUser.id)
+    .single()
+
+  if (!profile?.company_id) throw createError({ statusCode: 403, statusMessage: 'Forbidden' })
 
   const query = getQuery(event)
-  const companyId = query.company_id as string
   const from = query.from as string | undefined
   const to = query.to as string | undefined
   const siteId = query.site_id as string | undefined
-  if (!companyId) throw createError({ statusCode: 400, statusMessage: 'company_id required' })
 
   let q = supabase
     .from('visits')
     .select('*, visitor:visitors(*), site:sites(*), host:users(*)')
-    .eq('company_id', companyId)
+    .eq('company_id', profile.company_id)
     .order('visit_date', { ascending: false })
     .limit(5000)
 

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { validateKioskToken } from '~/server/utils/hmac'
 
 function getSupabase() {
   const config = useRuntimeConfig()
@@ -13,8 +14,15 @@ function normalizeCode(code: string): string {
 }
 
 export default defineEventHandler(async (event) => {
-  const supabase = getSupabase()
+  const config = useRuntimeConfig()
   const siteId = getRouterParam(event, 'siteId')!
+  const kioskKey = getHeader(event, 'x-kiosk-key') ?? ''
+
+  if (!config.appSecret || !await validateKioskToken(siteId, kioskKey, config.appSecret)) {
+    throw createError({ statusCode: 401, statusMessage: 'Invalid or missing kiosk key' })
+  }
+
+  const supabase = getSupabase()
   const body = await readBody(event)
   const { access_code, qr_data } = body
 

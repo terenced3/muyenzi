@@ -1,11 +1,16 @@
 import { serverSupabaseServiceRole } from '#supabase/server'
+import { validateSignToken } from '~/server/utils/hmac'
 
-// Public endpoint — returns visit + unsigned templates for pre-signing via email link
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig()
   const supabase = serverSupabaseServiceRole(event)
-  const { visit_id } = getQuery(event) as { visit_id?: string }
+  const { visit_id, st, exp } = getQuery(event) as { visit_id?: string; st?: string; exp?: string }
 
   if (!visit_id) throw createError({ statusCode: 400, statusMessage: 'visit_id required' })
+
+  if (!config.documentSigningSecret || !await validateSignToken(visit_id, st ?? '', config.documentSigningSecret, exp ?? '')) {
+    throw createError({ statusCode: 403, statusMessage: 'Invalid or missing sign token' })
+  }
 
   const { data: visit, error } = await supabase
     .from('visits')
