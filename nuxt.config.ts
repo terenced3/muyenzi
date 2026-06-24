@@ -8,6 +8,22 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPAB
 export default defineNuxtConfig({
   devtools: { enabled: false },
 
+  app: {
+    head: {
+      link: [
+        { rel: 'manifest', href: '/manifest.json' },
+        { rel: 'apple-touch-icon', href: '/icons/icon-192.png' },
+      ],
+      meta: [
+        { name: 'theme-color', content: '#6366f1' },
+        { name: 'mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+        { name: 'apple-mobile-web-app-title', content: 'Muyenzi Kiosk' },
+      ],
+    },
+  },
+
   modules: [
     '@nuxt/ui',
     '@nuxtjs/supabase',
