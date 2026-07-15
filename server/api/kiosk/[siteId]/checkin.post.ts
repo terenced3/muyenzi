@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 400, statusMessage: 'company_id is required' })
     }
 
-    const phone = body.phone.trim()
+    const phone = body.phone.replace(/[\s\-().]/g, '')
 
     // Check blacklist before allowing entry
     const { data: blocked } = await supabase

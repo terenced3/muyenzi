@@ -54,7 +54,7 @@ export default defineEventHandler(async (event) => {
     `
 
     const result = await resend.emails.send({
-      from: 'notifications@muyenzi.com',
+      from: config.resendFromNotification as string,
       to: hostEmail,
       subject: `${visitorName} has arrived at ${siteName}`,
       html: htmlContent,

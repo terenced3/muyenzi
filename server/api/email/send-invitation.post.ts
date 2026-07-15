@@ -100,7 +100,7 @@ export default defineEventHandler(async (event) => {
     `
 
     const result = await resend.emails.send({
-      from: 'invitations@muyenzi.com',
+      from: config.resendFromInvitation as string,
       to: visitorEmail,
       subject: `Your visitor pass for ${siteName}`,
       html: htmlContent,

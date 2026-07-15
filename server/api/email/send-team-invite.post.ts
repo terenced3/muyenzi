@@ -70,7 +70,7 @@ export default defineEventHandler(async (event) => {
     `
 
     const result = await resend.emails.send({
-      from: 'invitations@muyenzi.com',
+      from: config.resendFromInvitation as string,
       to: inviteeEmail,
       subject: `${inviterName} invited you to join ${companyName} on Muyenzi`,
       html,

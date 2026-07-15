@@ -46,8 +46,24 @@ export default defineNuxtConfig({
     resendApiKey: process.env.RESEND_API_KEY,
     appSecret: process.env.APP_SECRET || '',
     documentSigningSecret: process.env.DOCUMENT_SIGNING_SECRET || '',
+    resendFromInvitation: process.env.RESEND_FROM_INVITATION || 'invitations@muyenzi.com',
+    resendFromNotification: process.env.RESEND_FROM_NOTIFICATION || 'notifications@muyenzi.com',
     public: {
       supabaseUrl,
+    },
+  },
+
+  nitro: {
+    routeRules: {
+      '/**': {
+        headers: {
+          'X-Frame-Options': 'DENY',
+          'X-Content-Type-Options': 'nosniff',
+          'Referrer-Policy': 'strict-origin-when-cross-origin',
+          'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+          'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+        },
+      },
     },
   },
 

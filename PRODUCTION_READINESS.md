@@ -1,6 +1,6 @@
 # Production Readiness Audit — Muyenzi VMS
 
-> Audited: 2026-06-04 | Last updated: 2026-06-08 | Total issues: 24 | Blocking launch: 0 Critical + 0 High
+> Audited: 2026-06-04 | Last updated: 2026-07-15 | Total issues: 17 | Blocking launch: 0 Critical + 0 High | All resolved ✅
 
 ---
 
@@ -84,10 +84,10 @@
 
 | # | Issue | File | Status |
 |---|-------|------|--------|
-| L1 | No audit trail for document signatures — cannot prove who signed what for compliance | [server/api/documents/sign.post.ts](server/api/documents/sign.post.ts) | ⬜ |
-| L2 | Sender email addresses are hardcoded (`notifications@muyenzi.com`) — breaks for customers on custom domains | [server/api/email/](server/api/email/) | ⬜ |
-| L3 | Walk-in check-in doesn't normalise phone format — `+263...` and `0...` for the same person create duplicate visitor records | [server/api/kiosk/[siteId]/checkin.post.ts](server/api/kiosk/%5BsiteId%5D/checkin.post.ts) | ⬜ |
-| L4 | No CSP (Content Security Policy) headers configured | [nuxt.config.ts](nuxt.config.ts) | ⬜ |
+| L1 | No audit trail for document signatures — cannot prove who signed what for compliance | [server/api/documents/sign.post.ts](server/api/documents/sign.post.ts) | ✅ |
+| L2 | Sender email addresses are hardcoded (`notifications@muyenzi.com`) — breaks for customers on custom domains | [server/api/email/](server/api/email/) | ✅ |
+| L3 | Walk-in check-in doesn't normalise phone format — `+263...` and `0...` for the same person create duplicate visitor records | [server/api/kiosk/[siteId]/checkin.post.ts](server/api/kiosk/%5BsiteId%5D/checkin.post.ts) | ✅ |
+| L4 | No CSP (Content Security Policy) headers configured | [nuxt.config.ts](nuxt.config.ts) | ✅ |
 
 ---
 
@@ -128,10 +128,10 @@
 ```
 Critical  ✅✅✅✅  4/4
 High      ✅✅✅✅  4/4
-Medium    ✅⬜⬜⬜⬜  1/5
-Low       ⬜⬜⬜⬜  0/4
+Medium    ✅✅✅✅✅  5/5
+Low       ✅✅✅✅  4/4
 ─────────────────────
-Total     13/17 resolved
+Total     17/17 resolved ✅
 
 Email infrastructure  ✅ API key configured, all 3 flows tested and delivered
 Domain verification   🔜 Deferred — scheduled for commercialisation milestone
