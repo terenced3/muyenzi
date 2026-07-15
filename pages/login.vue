@@ -8,10 +8,12 @@ const supabase = useSupabaseClient()
 const route = useRoute()
 const rawRedirect = (route.query.redirect as string) || '/dashboard'
 const redirect = (rawRedirect.startsWith('/') && !rawRedirect.startsWith('//')) ? rawRedirect : '/dashboard'
+const deactivated = route.query.reason === 'deactivated'
 
 const state = reactive({ email: '', password: '' })
 const error = ref<string | null>(null)
 const loading = ref(false)
+const showPassword = ref(false)
 
 const schema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -27,7 +29,8 @@ async function onSubmit() {
   })
   loading.value = false
   if (authError) {
-    error.value = authError.message
+    // Normalise Supabase error — don't distinguish between wrong email vs wrong password
+    error.value = 'Invalid email or password'
     return
   }
   await navigateTo(redirect)
@@ -44,10 +47,22 @@ async function onSubmit() {
     </template>
 
     <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
+      <UAlert
+        v-if="deactivated"
+        color="amber"
+        variant="soft"
+        icon="i-lucide-alert-triangle"
+        description="Your account has been deactivated. Contact your administrator."
+      />
       <UAlert v-if="error" color="red" variant="soft" :description="error" />
 
       <UFormGroup label="Email" name="email">
-        <UInput v-model="state.email" type="email" placeholder="you@company.com" />
+        <UInput
+          v-model="state.email"
+          type="email"
+          placeholder="you@company.com"
+          autocomplete="email"
+        />
       </UFormGroup>
 
       <UFormGroup name="password">
@@ -59,7 +74,22 @@ async function onSubmit() {
             </NuxtLink>
           </div>
         </template>
-        <UInput v-model="state.password" type="password" />
+        <div class="relative">
+          <UInput
+            v-model="state.password"
+            :type="showPassword ? 'text' : 'password'"
+            autocomplete="current-password"
+            class="pr-10"
+          />
+          <button
+            type="button"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            :aria-label="showPassword ? 'Hide password' : 'Show password'"
+            @click="showPassword = !showPassword"
+          >
+            <UIcon :name="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="h-4 w-4" />
+          </button>
+        </div>
       </UFormGroup>
 
       <UButton type="submit" block :loading="loading" class="mt-2">

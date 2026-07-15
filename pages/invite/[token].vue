@@ -28,6 +28,7 @@ const loading = ref(true)
 const submitting = ref(false)
 const success = ref(false)
 const authError = ref<string | null>(null)
+const showPassword = ref(false)
 
 const state = reactive({
   full_name: '',
@@ -55,15 +56,8 @@ async function onSubmit() {
   authError.value = null
   submitting.value = true
 
-  // Atomically consume the token before creating the account — prevents race conditions
-  try {
-    await $fetch(`/api/team-invites/${token}`, { method: 'POST' })
-  } catch (e: any) {
-    authError.value = e?.data?.statusMessage ?? 'This invite is no longer available.'
-    submitting.value = false
-    return
-  }
-
+  // Token consumption is handled atomically by the handle_new_user DB trigger,
+  // which checks the invite_token in user metadata on INSERT into auth.users.
   const { error } = await supabase.auth.signUp({
     email: invite.value.email,
     password: state.password,
@@ -166,7 +160,23 @@ async function onSubmit() {
         </UFormGroup>
 
         <UFormGroup label="Password" name="password">
-          <UInput v-model="state.password" type="password" placeholder="At least 8 characters" />
+          <div class="relative">
+            <UInput
+              v-model="state.password"
+              :type="showPassword ? 'text' : 'password'"
+              placeholder="At least 8 characters"
+              autocomplete="new-password"
+              class="pr-10"
+            />
+            <button
+              type="button"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              @click="showPassword = !showPassword"
+            >
+              <UIcon :name="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="h-4 w-4" />
+            </button>
+          </div>
         </UFormGroup>
 
         <UAlert

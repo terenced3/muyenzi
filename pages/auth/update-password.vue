@@ -5,10 +5,21 @@ definePageMeta({ layout: 'auth' })
 useHead({ title: 'Set New Password – Muyenzi' })
 
 const supabase = useSupabaseClient()
+const supabaseUser = useSupabaseUser()
 const state = reactive({ password: '', confirm: '' })
 const loading = ref(false)
 const error = ref<string | null>(null)
 const done = ref(false)
+const showPassword = ref(false)
+const showConfirm = ref(false)
+
+// Supabase injects a session from the reset-password link before this page loads.
+// If there's no session the user reached this page directly — send them back.
+onMounted(() => {
+  if (!supabaseUser.value) {
+    navigateTo('/auth/reset-password')
+  }
+})
 
 const schema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -48,12 +59,47 @@ async function onSubmit() {
 
     <UForm v-else :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
       <UAlert v-if="error" color="red" variant="soft" :description="error" />
+
       <UFormGroup label="New password" name="password">
-        <UInput v-model="state.password" type="password" placeholder="At least 8 characters" />
+        <div class="relative">
+          <UInput
+            v-model="state.password"
+            :type="showPassword ? 'text' : 'password'"
+            placeholder="At least 8 characters"
+            autocomplete="new-password"
+            class="pr-10"
+          />
+          <button
+            type="button"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            :aria-label="showPassword ? 'Hide password' : 'Show password'"
+            @click="showPassword = !showPassword"
+          >
+            <UIcon :name="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="h-4 w-4" />
+          </button>
+        </div>
       </UFormGroup>
+
       <UFormGroup label="Confirm password" name="confirm">
-        <UInput v-model="state.confirm" type="password" placeholder="Repeat your new password" />
+        <div class="relative">
+          <UInput
+            v-model="state.confirm"
+            :type="showConfirm ? 'text' : 'password'"
+            placeholder="Repeat your new password"
+            autocomplete="new-password"
+            class="pr-10"
+          />
+          <button
+            type="button"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            :aria-label="showConfirm ? 'Hide password' : 'Show password'"
+            @click="showConfirm = !showConfirm"
+          >
+            <UIcon :name="showConfirm ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="h-4 w-4" />
+          </button>
+        </div>
       </UFormGroup>
+
       <UButton type="submit" block :loading="loading">Update password</UButton>
     </UForm>
   </UCard>

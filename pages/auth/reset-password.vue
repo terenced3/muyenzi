@@ -46,7 +46,7 @@ async function onSubmit() {
     <UForm v-else :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
       <UAlert v-if="error" color="red" variant="soft" :description="error" />
       <UFormGroup label="Email" name="email">
-        <UInput v-model="state.email" type="email" placeholder="you@company.com" />
+        <UInput v-model="state.email" type="email" placeholder="you@company.com" autocomplete="email" />
       </UFormGroup>
       <UButton type="submit" block :loading="loading">Send reset link</UButton>
     </UForm>

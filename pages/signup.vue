@@ -5,15 +5,17 @@ definePageMeta({ layout: 'auth' })
 useHead({ title: 'Create Account – Muyenzi' })
 
 const supabase = useSupabaseClient()
-const error = ref<string | null>(null)
 const loading = ref(false)
 const success = ref(false)
+const showPassword = ref(false)
+const showConfirm = ref(false)
 
 const state = reactive({
   full_name: '',
   company_name: '',
   email: '',
   password: '',
+  confirm_password: '',
 })
 
 const schema = z.object({
@@ -21,12 +23,30 @@ const schema = z.object({
   company_name: z.string().min(2, 'Company name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
+  confirm_password: z.string(),
+}).refine(d => d.password === d.confirm_password, {
+  message: 'Passwords do not match',
+  path: ['confirm_password'],
 })
 
+// 0–4 strength score
+const strength = computed(() => {
+  const p = state.password
+  if (!p) return 0
+  let s = 0
+  if (p.length >= 8) s++
+  if (p.length >= 12) s++
+  if (/[A-Z]/.test(p) && /[a-z]/.test(p)) s++
+  if (/[0-9]/.test(p) || /[^A-Za-z0-9]/.test(p)) s++
+  return s
+})
+
+const strengthLabel = computed(() => ['', 'Weak', 'Fair', 'Good', 'Strong'][strength.value])
+const strengthColor = computed(() => ['', 'bg-red-400', 'bg-amber-400', 'bg-lime-400', 'bg-emerald-500'][strength.value])
+
 async function onSubmit() {
-  error.value = null
   loading.value = true
-  const { error: authError } = await supabase.auth.signUp({
+  await supabase.auth.signUp({
     email: state.email,
     password: state.password,
     options: {
@@ -38,10 +58,7 @@ async function onSubmit() {
     },
   })
   loading.value = false
-  if (authError) {
-    error.value = authError.message
-    return
-  }
+  // Always show success — never reveal whether the email is already registered
   success.value = true
 }
 </script>
@@ -73,19 +90,70 @@ async function onSubmit() {
       </template>
 
       <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
-        <UAlert v-if="error" color="red" variant="soft" :description="error" />
-
         <UFormGroup label="Your name" name="full_name">
-          <UInput v-model="state.full_name" placeholder="Jane Smith" />
+          <UInput v-model="state.full_name" placeholder="Jane Smith" autocomplete="name" />
         </UFormGroup>
+
         <UFormGroup label="Company name" name="company_name">
-          <UInput v-model="state.company_name" placeholder="Acme Corp" />
+          <UInput v-model="state.company_name" placeholder="Acme Corp" autocomplete="organization" />
         </UFormGroup>
+
         <UFormGroup label="Work email" name="email">
-          <UInput v-model="state.email" type="email" placeholder="you@company.com" />
+          <UInput v-model="state.email" type="email" placeholder="you@company.com" autocomplete="email" />
         </UFormGroup>
+
         <UFormGroup label="Password" name="password">
-          <UInput v-model="state.password" type="password" placeholder="At least 8 characters" />
+          <div class="relative">
+            <UInput
+              v-model="state.password"
+              :type="showPassword ? 'text' : 'password'"
+              placeholder="At least 8 characters"
+              autocomplete="new-password"
+              class="pr-10"
+            />
+            <button
+              type="button"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              @click="showPassword = !showPassword"
+            >
+              <UIcon :name="showPassword ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="h-4 w-4" />
+            </button>
+          </div>
+          <!-- Strength meter -->
+          <div v-if="state.password" class="mt-2 space-y-1">
+            <div class="flex gap-1">
+              <div
+                v-for="i in 4"
+                :key="i"
+                class="h-1 flex-1 rounded-full transition-colors duration-200"
+                :class="i <= strength ? strengthColor : 'bg-slate-200'"
+              />
+            </div>
+            <p class="text-xs" :class="['', 'text-red-500', 'text-amber-500', 'text-lime-600', 'text-emerald-600'][strength]">
+              {{ strengthLabel }}
+            </p>
+          </div>
+        </UFormGroup>
+
+        <UFormGroup label="Confirm password" name="confirm_password">
+          <div class="relative">
+            <UInput
+              v-model="state.confirm_password"
+              :type="showConfirm ? 'text' : 'password'"
+              placeholder="Repeat your password"
+              autocomplete="new-password"
+              class="pr-10"
+            />
+            <button
+              type="button"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              :aria-label="showConfirm ? 'Hide password' : 'Show password'"
+              @click="showConfirm = !showConfirm"
+            >
+              <UIcon :name="showConfirm ? 'i-lucide-eye-off' : 'i-lucide-eye'" class="h-4 w-4" />
+            </button>
+          </div>
         </UFormGroup>
 
         <UButton type="submit" block :loading="loading" class="mt-2">
