@@ -1,9 +1,7 @@
-import { createHash } from 'node:crypto'
-
 export default defineNitroPlugin(() => {
   const config = useRuntimeConfig()
 
-  // These two are hard requirements — nothing works without them
+  // These two are hard requirements — the app cannot talk to the database without them
   const required: [string, string][] = [
     ['SUPABASE_URL', config.public.supabaseUrl],
     ['SUPABASE_SERVICE_KEY', config.supabaseServiceKey],
@@ -17,19 +15,13 @@ export default defineNitroPlugin(() => {
     )
   }
 
-  // APP_SECRET and DOCUMENT_SIGNING_SECRET are derived from the service key if not
-  // explicitly set. Derived values are stable across cold starts (same seed = same
-  // output) so kiosk tokens and sign links keep working. Set these env vars explicitly
-  // when you need independent key rotation.
-  const seed = config.supabaseServiceKey as string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cfg = config as any
-  if (!cfg.appSecret) {
-    cfg.appSecret = createHash('sha256').update('muyenzi:app:' + seed).digest('hex')
-    console.warn('[muyenzi] APP_SECRET not set — using derived fallback. Add APP_SECRET to your Vercel environment variables.')
+  // APP_SECRET and DOCUMENT_SIGNING_SECRET are only needed for kiosk auth and
+  // document sign links. Log a warning but do not crash — login, dashboard, and
+  // all management features work without them.
+  if (!config.appSecret) {
+    console.warn('[muyenzi] APP_SECRET is not set. Kiosk authentication will not work until this is added to your environment variables.')
   }
-  if (!cfg.documentSigningSecret) {
-    cfg.documentSigningSecret = createHash('sha256').update('muyenzi:sign:' + seed).digest('hex')
-    console.warn('[muyenzi] DOCUMENT_SIGNING_SECRET not set — using derived fallback. Add DOCUMENT_SIGNING_SECRET to your Vercel environment variables.')
+  if (!config.documentSigningSecret) {
+    console.warn('[muyenzi] DOCUMENT_SIGNING_SECRET is not set. Document sign links will not work until this is added to your environment variables.')
   }
 })
