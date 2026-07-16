@@ -52,13 +52,15 @@ export default defineEventHandler(async (event) => {
       // 0 rows affected — another request signed between our check and this update
       throw createError({ statusCode: 409, statusMessage: 'Document already signed' })
     }
-    await supabase.from('audit_logs').insert({
-      company_id,
-      user_id: null,
-      action: 'document_signed',
-      resource: 'document_signature',
-      metadata: { template_id, visit_id, visitor_id, pre_signed: pre_signed ?? false },
-    }).catch(() => {})
+    try {
+      await supabase.from('audit_logs').insert({
+        company_id,
+        user_id: null,
+        action: 'document_signed',
+        resource: 'document_signature',
+        metadata: { template_id, visit_id, visitor_id, pre_signed: pre_signed ?? false },
+      })
+    } catch {}
     return updated
   }
 
@@ -84,12 +86,14 @@ export default defineEventHandler(async (event) => {
     }
     throw createError({ statusCode: 500, statusMessage: insertError.message })
   }
-  await supabase.from('audit_logs').insert({
-    company_id,
-    user_id: null,
-    action: 'document_signed',
-    resource: 'document_signature',
-    metadata: { template_id, visit_id, visitor_id, pre_signed: pre_signed ?? false },
-  }).catch(() => {})
+  try {
+    await supabase.from('audit_logs').insert({
+      company_id,
+      user_id: null,
+      action: 'document_signed',
+      resource: 'document_signature',
+      metadata: { template_id, visit_id, visitor_id, pre_signed: pre_signed ?? false },
+    })
+  } catch {}
   return inserted
 })
