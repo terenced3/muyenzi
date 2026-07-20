@@ -31,6 +31,11 @@ watch(() => props.companyId, async (id) => {
   customFields.value = data
 }, { immediate: true })
 
+function localDateStr(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
 const state = reactive({
   visitor_name: '',
   visitor_phone: '',
@@ -38,7 +43,7 @@ const state = reactive({
   visitor_company: '',
   site_id: '',
   host_id: props.hostId,
-  visit_date: new Date().toISOString().split('T')[0],
+  visit_date: localDateStr(),
   visit_time: '',
   purpose: '',
   notes: '',
@@ -161,7 +166,7 @@ function createAnother() {
   Object.assign(state, {
     visitor_name: '', visitor_phone: '', visitor_email: '', visitor_company: '',
     site_id: '', host_id: props.hostId, purpose: '',
-    visit_date: new Date().toISOString().split('T')[0], visit_time: '', notes: '',
+    visit_date: localDateStr(), visit_time: '', notes: '',
   })
   Object.keys(customFieldValues).forEach(k => delete customFieldValues[k])
 }

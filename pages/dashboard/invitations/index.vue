@@ -13,15 +13,19 @@ const cancellingId = ref<string | null>(null)
 
 async function fetchInvitations() {
   if (!user.value) return
-  const today = new Date().toISOString().split('T')[0]
+  // Use local date (not UTC) so visitors in UTC+ timezones see today's invitations correctly.
+  // Cutoff is yesterday so recently-past invites stay visible for follow-up.
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  const cutoff = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`
   const { data } = await supabase
     .from('visits')
     .select('*, visitor:visitors(*), site:sites(*), host:users(*)')
     .eq('company_id', user.value.company_id)
     .in('status', ['expected'])
-    .gte('visit_date', today)
+    .gte('visit_date', cutoff)
     .order('visit_date', { ascending: true })
-    .limit(50)
+    .limit(100)
   visits.value = (data ?? []) as VisitWithRelations[]
   loading.value = false
 }
